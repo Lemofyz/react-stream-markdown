@@ -1,0 +1,174 @@
+{
+  "date": "2026-09-27",
+  "method": "Foreground Chrome through browser connector; actual same-origin loopback HTTP mock; timings rounded to 0.1 ms",
+  "environment": {
+    "node": "24.20.0",
+    "chrome": "152.0.0.0",
+    "platform": "macOS",
+    "viewport": {
+      "width": 1598,
+      "height": 793
+    },
+    "reducedMotion": false
+  },
+  "normalRuns": [
+    {
+      "trial": 1,
+      "policies": [
+        {
+          "policy": "frame",
+          "clickToRequestMs": 86.0,
+          "timeToFirstTextMs": 203.2,
+          "firstTextToCommitMs": 4.8,
+          "firstTextToVisibleEstimateMs": 15.9,
+          "firstTextToEndMs": 900.6,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        },
+        {
+          "policy": "event",
+          "clickToRequestMs": 86.0,
+          "timeToFirstTextMs": 203.2,
+          "firstTextToCommitMs": 4.8,
+          "firstTextToVisibleEstimateMs": 18.0,
+          "firstTextToEndMs": 900.6,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        },
+        {
+          "policy": "sentence",
+          "clickToRequestMs": 86.0,
+          "timeToFirstTextMs": 203.2,
+          "firstTextToCommitMs": 363.3,
+          "firstTextToVisibleEstimateMs": 370.6,
+          "firstTextToEndMs": 900.6,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "policies": [
+        {
+          "policy": "frame",
+          "clickToRequestMs": 84.1,
+          "timeToFirstTextMs": 201.9,
+          "firstTextToCommitMs": 3.0,
+          "firstTextToVisibleEstimateMs": 13.6,
+          "firstTextToEndMs": 899.8,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        },
+        {
+          "policy": "event",
+          "clickToRequestMs": 84.1,
+          "timeToFirstTextMs": 201.9,
+          "firstTextToCommitMs": 3.0,
+          "firstTextToVisibleEstimateMs": 15.8,
+          "firstTextToEndMs": 899.8,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        },
+        {
+          "policy": "sentence",
+          "clickToRequestMs": 84.1,
+          "timeToFirstTextMs": 201.9,
+          "firstTextToCommitMs": 364.9,
+          "firstTextToVisibleEstimateMs": 370.7,
+          "firstTextToEndMs": 899.8,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "policies": [
+        {
+          "policy": "frame",
+          "clickToRequestMs": 85.2,
+          "timeToFirstTextMs": 202.8,
+          "firstTextToCommitMs": 3.6,
+          "firstTextToVisibleEstimateMs": 7.9,
+          "firstTextToEndMs": 899.5,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        },
+        {
+          "policy": "event",
+          "clickToRequestMs": 85.2,
+          "timeToFirstTextMs": 202.8,
+          "firstTextToCommitMs": 3.6,
+          "firstTextToVisibleEstimateMs": 10.2,
+          "firstTextToEndMs": 899.5,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        },
+        {
+          "policy": "sentence",
+          "clickToRequestMs": 85.2,
+          "timeToFirstTextMs": 202.8,
+          "firstTextToCommitMs": 361.1,
+          "firstTextToVisibleEstimateMs": 374.4,
+          "firstTextToEndMs": 899.5,
+          "requestTiming": "PerformanceResourceTiming.requestStart"
+        }
+      ]
+    }
+  ],
+  "browserHarness": {
+    "passed": 8,
+    "total": 8,
+    "checks": [
+      "first incomplete sentence appears before stream completion",
+      "1,000-fragment HTTP burst loses no text",
+      "abort before first text stays empty",
+      "interrupt preserves already received partial text",
+      "restart isolates stale transport callbacks",
+      "transport error keeps partial text and reports failure",
+      "HTML-shaped text is rendered as text",
+      "content has no animation and remains fully opaque"
+    ],
+    "burst": {
+      "fragments": 1001,
+      "textPublications": 3
+    },
+    "firstRun": {
+      "clickToDispatchMs": 1.0,
+      "timeToFirstTextFromDispatchMs": 203.8,
+      "firstTextToCommitMs": 0.6,
+      "firstTextToVisibleEstimateMs": 7.2,
+      "firstTextToEndMs": 900.2
+    }
+  },
+  "limitations": [
+    "Synthetic first-text delay and completion schedule; no model or production backend benchmark",
+    "Visible time is a frame estimate, not exact physical paint",
+    "Text publications are not React renders or CPU speed",
+    "No human readability study",
+    "Local Playwright process launch restricted; browser harness executed through connector",
+    "Reduced-motion emulation and mobile Playwright checks are configured for CI, not claimed as local CLI results"
+  ],
+  "noPunctuationRun": {
+    "method": "one additional Chrome same-stream trial; rounded ms",
+    "policies": [
+      {
+        "policy": "frame",
+        "clickToRequestMs": 84.3,
+        "timeToFirstTextMs": 201.6,
+        "firstTextToCommitMs": 2.9,
+        "firstTextToVisibleEstimateMs": 8.4,
+        "firstTextToEndMs": 900.9
+      },
+      {
+        "policy": "event",
+        "clickToRequestMs": 84.3,
+        "timeToFirstTextMs": 201.6,
+        "firstTextToCommitMs": 2.9,
+        "firstTextToVisibleEstimateMs": 10.5,
+        "firstTextToEndMs": 900.9
+      },
+      {
+        "policy": "sentence",
+        "clickToRequestMs": 84.3,
+        "timeToFirstTextMs": 201.6,
+        "firstTextToCommitMs": 903.0,
+        "firstTextToVisibleEstimateMs": 918.3,
+        "firstTextToEndMs": 900.9
+      }
+    ]
+  }
+}
