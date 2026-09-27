@@ -2,7 +2,7 @@
 
 A small TypeScript/React streaming-text component and latency lab maintained by [@Lemofly](https://github.com/Lemofly).
 
-Publish the first readable fragment immediately. Coalesce later deltas into a browser frame. Measure where the wait happens instead of adding a typing animation.
+Publish the first readable fragment immediately. Compare the original frame-batched renderer with an optional append-only clarification effect. Measure where the wait happens without adding a typing delay.
 
 **Initial code, tests, and documentation were generated with OpenAI Codex under the maintainer's direction.** This is an AI-assisted project, not a claim of manually written code. See [maintenance and provenance](docs/MAINTAINERS.md) and the commit history.
 
@@ -10,7 +10,7 @@ Publish the first readable fragment immediately. Coalesce later deltas into a br
 
 - Removes artificial sentence/typing waits in the display layer. An incomplete sentence can already be read.
 - Reduces text publications during bursts while preserving delta order and every received character.
-- Keeps one stable text node: old text does not remount or replay an entrance animation.
+- Original keeps one stable text node. Smoothed keeps stable append-only spans: first text is fully visible, and only later additions clarify from opacity 0.8 to 1 over 100 ms. Old text never replays.
 - Separates send preparation, time to first readable text, DOM commit, a visible-frame estimate, and the terminal event.
 - Keeps received text on interruption/error, flushes queued deltas on termination, and ignores stale sessions after a restart.
 
@@ -29,7 +29,11 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:4318**. Select normal fragments, a 1,000-fragment burst, no sentence boundary, or a transport error. Run, stop, or restart the stream. All three panels receive the same HTTP response and arrival timestamps. Preparation delay is deliberately adjustable; it is an experiment control, not a library requirement.
+Open **http://127.0.0.1:4318**. Select normal fragments, a 1,000-fragment burst, no sentence boundary, or a transport error. Run, stop, or restart the stream. Original / Smoothed appear side by side and receive the same HTTP response and timestamps. Per-event and sentence-buffer experiments remain under Additional timing experiments. Preparation delay is deliberately adjustable; it is an experiment control, not a library requirement.
+
+For a reproducible **live before/after comparison**, select **Playback → Slow · 4× arrival intervals**, keep Normal fragments, and click Run stream. Both replies are identical; the server stretches intervals equally, preserving the synthetic 200 ms first-text schedule. Slow mode takes about 3.8 seconds from request dispatch to completion. Watch the second and later fragments, then try Stop and Restart during playback.
+
+You can also open **http://127.0.0.1:4318/?playback=slow&scenario=normal&autoplay=1** to start the same comparison automatically. The Shared fragment arrival timestamps disclosure records the single receive timeline used by both panels. Repeat with a burst, no sentence boundary, or a transport error. This is a moving comparison, not just a final screenshot; no model or production speed claim is made.
 
 The sentence-buffer panel is a comparison-only adapter. It waits for punctuation and flushes at a terminal event. It is intentionally not shipped as the recommended display policy or as a robust multilingual segmenter.
 
@@ -67,6 +71,24 @@ session.complete();
 
 This snippet illustrates the API, not a provider integration. [The runnable demo](demo/main.tsx) owns the controller/session in React state, decodes the stream, aborts on stop, and handles restarts. [The example transport](demo/protocol.ts) is NDJSON, not SSE. Adapt your own parser to call `append(delta)` for **deltas**, not cumulative snapshots.
 
+For optional clarification, mount `SmoothedStreamingText` with a controller created using `createTextStream({batch:false})`. Its DOM subscription appends each delta synchronously before `append` returns, then starts decoration on **only the newly appended span**. The first readable fragment is never animated. React owns the container; the component owns its escaped, plain-text descendants. It does not call `flushSync` or force physical paint. A browser can still coalesce rendering opportunities.
+
+```tsx
+import { SmoothedStreamingText, createTextStream } from './lib/index.js';
+const smoothed = createTextStream({batch:false});
+const smoothedSession = smoothed.begin();
+// Mount before consuming your transport, as in demo/main.tsx:
+<SmoothedStreamingText stream={smoothed} session={smoothedSession} />;
+// In the actual request/delta callbacks:
+smoothedSession.requestStarted();
+smoothedSession.append('Fully visible first fragment');
+smoothedSession.append(' readable immediately, clarifying over 100 ms');
+```
+
+Base opacity is always 1. The Web Animations API effect has no persistent fill; completion, stop, error, restart, unmount, backgrounding, and a reduced-motion preference change cancel decoration. Unsupported animation APIs simply show fully opaque text. There is no sentence buffer, timer-gated insertion, translation, blur, or old-text animation. See [Element.animate](https://developer.mozilla.org/en-US/docs/Web/API/Element/animate).
+
+**Tradeoff:** Smoothed uses an unbatched subscription and one span per published delta. It performs more DOM work than Original, especially during bursts; clarification is a visual option, not a CPU optimization. With a frame-batched controller it can only render what the controller publishes, so use `batch:false` to meet the immediate-per-delta contract. Memory/DOM size grows with response fragments.
+
 Other lifecycle operations:
 
 ```ts
@@ -80,7 +102,7 @@ stream.dispose();            // final owner teardown; controller cannot be reuse
 
 `useStreamingText(stream)` exposes an immutable snapshot through `useSyncExternalStore`. A controller is owned by its caller; unmounting `StreamingText` cancels its visibility probe but does not dispose a shared controller. Do not dispose a reusable controller during React StrictMode's effect replay. Stop the transport on owner cleanup; dispose only when its lifetime is definitively over.
 
-The first readable delta is published to the store without a frame timer. **React still schedules the DOM commit**; this library does not force synchronous paint or call `flushSync`. Later deltas use rAF with a 50 ms timer fallback for suspended frames. Browsers can throttle background timers, so 50 ms is not a hard delivery guarantee. Completion, interruption, and errors flush immediately without relying on rAF.
+In the Original renderer, the first readable delta is published to the store without a frame timer. **React still schedules the DOM commit**; this library does not force synchronous paint or call `flushSync`. Later deltas use rAF with a 50 ms timer fallback for suspended frames. Browsers can throttle background timers, so 50 ms is not a hard delivery guarantee. Completion, interruption, and errors flush immediately without relying on rAF.
 
 ## Measurement contract
 
@@ -90,7 +112,7 @@ Use one monotonic `performance.now()` clock and one session per request. `durati
 | --- | --- |
 | `clickToRequestMs` | Send-handler entry → network-stack request start, or fetch dispatch fallback |
 | `timeToFirstTextMs` | Request start → first decoded non-whitespace text |
-| `firstTextToCommitMs` | First text → React layout-effect observation of the committed DOM |
+| `firstTextToCommitMs` | First text → observation of committed DOM (Original layout effect; Smoothed synchronous DOM append) |
 | `firstTextToVisibleEstimateMs` | First text → post-commit frame sample with first-character viewport/clipping/opacity checks |
 | `firstTextToEndMs` | First text → completion, interruption, or error; inspect `status` to distinguish them |
 
@@ -98,19 +120,21 @@ Use one monotonic `performance.now()` clock and one session per request. `durati
 
 For comparison adapters that buffer input, call `textReceived(at)` at actual readable-text arrival **before** buffering, then append the released output. Otherwise you would incorrectly hide buffering time inside “time to first text.” See the sentence experiment in the demo.
 
+The timing definitions and subtraction formulas are unchanged. Both renderers use the same first-readable-character probe; it now also traverses text inside spans. First text in Smoothed is opaque, so its 100 ms decoration is not part of the first-visible metric.
+
 The visible estimate uses two animation frames after commit and checks the first readable character's bounds, scroll-container clipping, document visibility, and ancestor opacity ≥95%. It does not observe exact physical display paint, occlusion by other windows/overlays, human eye movement, comprehension, or readability preference. Background/offscreen content may leave the visible timestamp `null` until it becomes visible. Sampling never delays content. Screenshots and browser checks validate behavior; they do not turn the estimate into an exact paint timestamp. See [requestAnimationFrame documentation](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame).
 
 ## Accessibility and motion
 
-The reply is a labeled region. There is no per-token live announcement; applications should choose their own screen-reader policy, for example announcing completion. Real text has no fade, transform, or typing animation. The supplied styles honor `prefers-reduced-motion`; content remains immediate with either preference. Consumer CSS that hides/animates ancestors can still delay visibility and is outside this component's control. See [reduced-motion documentation](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion).
+The reply is a labeled region. There is no per-token live announcement; applications should choose their own screen-reader policy, for example announcing completion. Original has no text animation. Smoothed leaves the first fragment fully opaque and later fragments immediately readable at opacity ≥0.8, clarifying to 1. It honors `prefers-reduced-motion` on initial mount and live preference changes; reduced motion disables/cancels decoration without replay. There is no transform or typing delay. Consumer CSS that hides/animates ancestors can still delay visibility and is outside this component's control. See [reduced-motion documentation](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion).
 
 ## Recorded evidence
 
-Actual local results, environment, and limitations are in [verification](docs/verification.md), [browser measurements](docs/browser-results.json), and [deterministic results](docs/deterministic-results.json).
+Latest smoothing results and the reproducible comparison are in [smoothing verification](docs/smoothing-verification.md) and [smoothing measurements](docs/smoothing-results.json). Initial-release local results, environment, and limitations are retained in [verification](docs/verification.md), [browser measurements](docs/browser-results.json), and [deterministic results](docs/deterministic-results.json).
 
-- 29 unit/React/transport tests passed on Node 24.20.0.
+- 45 unit/React/transport/smoothing tests passed on Node 24.20.0.
 - Type check, demo build, and library build passed.
-- Local Chrome browser harness: 8/8 checks passed with real loopback HTTP.
+- Local Chrome browser harness: 16/16 checks passed, including real loopback HTTP, synchronous delta-to-DOM checks, actual 100 ms animation effects, terminal cleanup, and simulated MediaQueryList preference changes. The original 8 checks remain included.
 - In the deterministic 1,000-delta burst, frame batching published text twice versus 1,000 per-event publications; both retained all 1,000 characters. This is a scheduling/correctness result, **not a measured CPU speedup**.
 - Same-stream browser runs show sentence buffering adding hundreds of milliseconds before visible text. The immediate per-event baseline was already fast. No human study established a readability winner.
 
@@ -120,7 +144,7 @@ Repeat browser checks without launching a separate browser process:
 2. Open **http://127.0.0.1:4318/browser-checks.html** in a foreground tab.
 3. Click **Run browser checks**. The page reports assertions, timings, and environment as JSON.
 
-A Playwright wrapper runs the same harness, checks reduced-motion emulation, and exercises the mobile demo:
+A Playwright wrapper runs the same harness, checks reduced-motion emulation, and exercises the mobile and slow comparison:
 
 ```sh
 npx playwright install chromium

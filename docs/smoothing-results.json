@@ -1,0 +1,229 @@
+{
+  "date": "2026-09-27",
+  "version": "0.2.0",
+  "environment": {
+    "node": "24.20.0",
+    "chrome": "152.0.0.0",
+    "platform": "macOS",
+    "viewport": {
+      "width": 1598,
+      "height": 793
+    },
+    "systemReducedMotion": false
+  },
+  "method": "Foreground browser connector, real loopback HTTP, slow playback (4x inter-fragment intervals), preparation 80ms. Both panels use one response and one recorded receive timeline. No model calls.",
+  "slowRuns": [
+    {
+      "trial": 1,
+      "requestAt": 231.60000002384186,
+      "networkRequestAt": 233.29999995231628,
+      "firstTextAt": 436.0,
+      "clickToRequestMs": 83.5,
+      "timeToFirstTextMs": 202.70000004768372,
+      "original": {
+        "firstTextToCommitMs": 10.5,
+        "firstTextToVisibleEstimateMs": 27.0,
+        "firstTextToEndMs": 3600.0
+      },
+      "smoothed": {
+        "firstTextToCommitMs": 0.3999999761581421,
+        "firstTextToVisibleEstimateMs": 25.5,
+        "firstTextToEndMs": 3600.0
+      }
+    },
+    {
+      "trial": 2,
+      "requestAt": 26782.299999952316,
+      "networkRequestAt": 26785.0,
+      "firstTextAt": 26987.5,
+      "clickToRequestMs": 85.60000002384186,
+      "timeToFirstTextMs": 202.5,
+      "original": {
+        "firstTextToCommitMs": 2.100000023841858,
+        "firstTextToVisibleEstimateMs": 7.200000047683716,
+        "firstTextToEndMs": 3599.5
+      },
+      "smoothed": {
+        "firstTextToCommitMs": 0.10000002384185791,
+        "firstTextToVisibleEstimateMs": 6.5,
+        "firstTextToEndMs": 3599.600000023842
+      }
+    },
+    {
+      "trial": 3,
+      "requestAt": 111981.10000002384,
+      "networkRequestAt": 111984.0,
+      "firstTextAt": 112186.79999995232,
+      "clickToRequestMs": 84.70000004768372,
+      "timeToFirstTextMs": 202.79999995231628,
+      "original": {
+        "firstTextToCommitMs": 3.200000047683716,
+        "firstTextToVisibleEstimateMs": 7.400000095367432,
+        "firstTextToEndMs": 3599.7000000476837
+      },
+      "smoothed": {
+        "firstTextToCommitMs": 0.10000002384185791,
+        "firstTextToVisibleEstimateMs": 6.200000047683716,
+        "firstTextToEndMs": 3599.8000000715256
+      }
+    }
+  ],
+  "firstTrialSharedArrivals": [
+    {
+      "fragment": 1,
+      "receivedAt": 436.0,
+      "characters": 21
+    },
+    {
+      "fragment": 2,
+      "receivedAt": 1154.6000000238419,
+      "characters": 17
+    },
+    {
+      "fragment": 3,
+      "receivedAt": 1874.3999999761581,
+      "characters": 14
+    },
+    {
+      "fragment": 4,
+      "receivedAt": 2595.7999999523163,
+      "characters": 21
+    },
+    {
+      "fragment": 5,
+      "receivedAt": 3315.399999976158,
+      "characters": 27
+    }
+  ],
+  "limitations": [
+    "Only three local slow trials, not a statistically powered speed comparison",
+    "DOM commit observation differs by implementation (layout effect vs synchronous DOM append), but the boundary and duration formula do not change",
+    "Visible time remains a two-frame estimate, not physical paint",
+    "Clarification can increase DOM/CPU work; it cannot accelerate model generation",
+    "Reduced-motion live change is tested with a simulated MediaQueryList; OS-level emulation is configured in Playwright but not claimed as a local CLI pass"
+  ],
+  "browserHarness": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "viewport": {
+      "width": 1598,
+      "height": 793
+    },
+    "reducedMotion": false,
+    "passed": 16,
+    "total": 16,
+    "results": [
+      {
+        "name": "first incomplete sentence appears before stream completion",
+        "passed": true,
+        "detail": {
+          "clickToRequestMs": 12.799999952316284,
+          "timeToFirstTextMs": 204.90000009536743,
+          "firstTextToCommitMs": 1.0999999046325684,
+          "firstTextToVisibleEstimateMs": 11.299999952316284,
+          "firstTextToEndMs": 900
+        }
+      },
+      {
+        "name": "1,000-fragment HTTP burst loses no text",
+        "passed": true,
+        "detail": {
+          "fragments": 1001,
+          "publications": 3
+        }
+      },
+      {
+        "name": "abort before first text stays empty",
+        "passed": true
+      },
+      {
+        "name": "interrupt preserves already received partial text",
+        "passed": true
+      },
+      {
+        "name": "restart isolates stale transport callbacks",
+        "passed": true
+      },
+      {
+        "name": "transport error keeps partial text and reports failure",
+        "passed": true
+      },
+      {
+        "name": "HTML-shaped text is rendered as text",
+        "passed": true
+      },
+      {
+        "name": "content has no animation and remains fully opaque",
+        "passed": true,
+        "detail": {
+          "reducedMotion": false,
+          "animation": "none",
+          "opacity": "1"
+        }
+      },
+      {
+        "name": "smoothed first fragment is synchronously in DOM, fully opaque and unanimated",
+        "passed": true,
+        "detail": {
+          "clickToRequestMs": 0,
+          "timeToFirstTextMs": 2.899999976158142,
+          "firstTextToCommitMs": 0,
+          "firstTextToVisibleEstimateMs": 19.800000071525574,
+          "firstTextToEndMs": null
+        }
+      },
+      {
+        "name": "only the new fragment clarifies over 100 ms while old text stays opaque",
+        "passed": true,
+        "detail": {
+          "newFragmentMidOpacity": 0.849431,
+          "durationMs": 100,
+          "settledOpacity": "1",
+          "oldFirstOpacity": "1"
+        }
+      },
+      {
+        "name": "rapid overlapping additions enter DOM in order without leaving translucent text",
+        "passed": true,
+        "detail": {
+          "fragments": 101,
+          "characters": 295,
+          "allOpaque": true
+        }
+      },
+      {
+        "name": "smoothed HTTP burst matches every decoded delta synchronously",
+        "passed": true,
+        "detail": {
+          "fragments": 1001,
+          "characters": 2021,
+          "maxSynchronousAppendMs": 3.899999976158142,
+          "allOpaque": true
+        }
+      },
+      {
+        "name": "stop cancels active clarification and retains partial text immediately",
+        "passed": true
+      },
+      {
+        "name": "HTTP error settles every fragment and retains partial text",
+        "passed": true,
+        "detail": {
+          "characters": 73,
+          "allOpaque": true
+        }
+      },
+      {
+        "name": "restart cancels old animations, ignores stale callbacks and resets the first fragment",
+        "passed": true
+      },
+      {
+        "name": "reduced-motion preference disables and cancels decoration without replay",
+        "passed": true,
+        "detail": {
+          "method": "simulated MediaQueryList + change event",
+          "allOpaque": true
+        }
+      }
+    ]
+  }
+}

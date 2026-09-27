@@ -1,4 +1,6 @@
-# Verification record
+# Initial-release verification record
+
+This document preserves the initial-release results. See [smoothing verification](smoothing-verification.md) for the updated renderer and latest tests.
 
 2026-09-27, Mac, Node 24.20.0, foreground Chrome 152.0.0.0, 1598×793 viewport, system reduced-motion preference false. Dependencies are pinned by `package-lock.json`.
 
