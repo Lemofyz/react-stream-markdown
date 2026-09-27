@@ -1,5 +1,5 @@
 .stream-readable { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
-/* The original renderer and first smoothed fragment have no entrance animation. */
+/* Letter reveal is driven by Web Animations; unanimated text stays fully opaque. */
 .stream-readable-append { opacity: 1; }
 /* WAAPI decoration is also disabled/cancelled by the reduced-motion listener. */
 @media (prefers-reduced-motion: reduce) {

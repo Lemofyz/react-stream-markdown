@@ -83,7 +83,7 @@ function App() {
     if(new URLSearchParams(location.search).get('autoplay')==='1'&&!autoplayed.current){autoplayed.current=true;void run();}
   },[]);
   return <main>
-    <header><div className="eyebrow">STREAM READABLE / LATENCY LAB</div><h1>Read sooner.<br/><span>Measure the wait.</span></h1><p>Original and Smoothed receive the same fragments from one request. Compare the append transition while the reply is still arriving.</p></header>
+    <header><div className="eyebrow">STREAM READABLE / LATENCY LAB</div><h1>Watch each letter.<br/><span>Measure the wait.</span></h1><p>Original and Letter reveal receive the same fragments from one request. Watch each new letter fade in from left to right while the reply arrives.</p></header>
     <form className="controls" onSubmit={e=>{e.preventDefault();void run();}}>
       <label>Stream scenario<select value={scenario} onChange={e=>setScenario(e.target.value)}><option value="normal">Normal fragments</option><option value="burst">1,000-fragment burst</option><option value="no-punctuation">No sentence boundary</option><option value="error">Transport error</option></select></label>
       <label>Playback<select value={playback} onChange={e=>setPlayback(e.target.value)}><option value="normal">Normal arrival intervals</option><option value="slow">Slow · 4× arrival intervals</option></select></label>
@@ -92,14 +92,14 @@ function App() {
     </form>
     <div className="panels comparison">
       <Panel title="Original" description="The previous left-column renderer: first text immediately published, subsequent updates batched by frame. No text transition." stream={streams[0]} session={sessions[0]} id="frame"/>
-      <Panel title="Smoothed" description="First fragment fully visible. Each later fragment enters the DOM immediately and clarifies from opacity 0.8 to 1 over 100 ms." stream={streams[1]} session={sessions[1]} id="smoothed" smoothed/>
+      <Panel title="Letter reveal" description="New letters reveal from left to right, from transparent to opaque. Existing letters stay still; this is a visual effect, not faster generation." stream={streams[1]} session={sessions[1]} id="smoothed" smoothed/>
     </div>
     <details className="experiments"><summary>Additional timing experiments</summary><div className="panels">
       <Panel title="Every event" description="Immediate per-event baseline. Already fast; can publish many redundant snapshots." stream={streams[2]} session={sessions[2]} id="event"/>
       <Panel title="Sentence buffer experiment" description="Comparison only. Holds text until punctuation or the terminal event." stream={streams[3]} session={sessions[3]} id="sentence"/>
     </div></details>
     <details className="arrivals"><summary>Shared fragment arrival timestamps</summary><pre data-testid="arrivals-json">{JSON.stringify(arrivals.current,null,2)}</pre></details>
-    <footer><p><strong>Visible time is an estimate.</strong> Request start uses same-origin ResourceTiming when available, otherwise fetch dispatch. Visible time uses two animation frames after commit, with first-character viewport, clipping, and opacity checks. It does not measure physical display pixels or human comprehension.</p><p>Original has no content animation. Smoothed uses only a 100 ms new-fragment opacity transition; first text is fully opaque and old fragments never replay. Reduced motion disables the decoration. Slow playback changes synthetic arrival intervals equally for both panels, not model speed. No model calls, external assets, or credentials. Readability preference requires a user study.</p></footer>
+    <footer><p><strong>Visible time is an estimate.</strong> Request start uses same-origin ResourceTiming when available, otherwise fetch dispatch. Visible time uses two animation frames after commit, with first-character viewport, clipping, and opacity checks. It does not measure physical display pixels or human comprehension.</p><p>Original has no content animation. Letter reveal animates new graphemes from opacity 0 to 1, left to right, while old text stays still. It deliberately delays full legibility, adds DOM work, and cannot speed up generation. Reduced motion or large bursts show plain text immediately. Slow playback changes synthetic arrival intervals equally for both panels. No model calls, external assets, or credentials.</p></footer>
   </main>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);

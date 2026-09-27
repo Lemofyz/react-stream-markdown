@@ -18,13 +18,12 @@ test('demo compares identical streams and works on mobile',async({page})=>{
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
-test('slow same-stream comparison exposes first text and new-fragment animation before completion',async({page})=>{
+test('slow same-stream comparison reveals new letters before completion',async({page})=>{
  await page.goto('/?playback=slow');await page.getByRole('button',{name:'Run stream',exact:true}).click();
- const original=page.getByRole('region',{name:'Original reply',exact:true});const smoothed=page.getByRole('region',{name:'Smoothed reply',exact:true});
+ const original=page.getByRole('region',{name:'Original reply',exact:true});const smoothed=page.getByRole('region',{name:'Letter reveal reply',exact:true});
  await expect(original).toHaveText('You can start reading');await expect(smoothed).toHaveText('You can start reading');
- expect(await smoothed.locator('span').first().evaluate(el=>({opacity:getComputedStyle(el).opacity,animations:el.getAnimations().length}))).toEqual({opacity:'1',animations:0});
+ expect(await smoothed.locator('span').count()).toBeGreaterThan(1);
  await expect(smoothed).toHaveText('You can start reading before the reply');
- expect(await smoothed.locator('span').last().evaluate(el=>Number(getComputedStyle(el).opacity))).toBeGreaterThanOrEqual(0.8);
  await page.getByRole('button',{name:'Stop',exact:true}).click();
  await expect(page.getByTestId('smoothed').getByRole('status')).toHaveText('interrupted');
  expect(await smoothed.locator('span').evaluateAll(els=>els.every(el=>getComputedStyle(el).opacity==='1'&&el.getAnimations().length===0))).toBe(true);

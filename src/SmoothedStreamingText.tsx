@@ -2,11 +2,7 @@ import {useLayoutEffect,useRef} from 'react';
 import type {StreamSession,TextStream} from './stream.js';
 import {observeFirstVisible} from './visibility.js';
 
-/**
- * React owns the container; this subscription owns only its plain-text descendants.
- * Use createTextStream({batch:false}) for synchronous DOM appends on each received delta.
- * Each appended span is stable. Animation is decoration, never a gate for content.
- */
+/** Append each new grapheme in order; previously displayed text is never animated again. */
 export function SmoothedStreamingText({stream,session,label='Smoothed streaming reply',className=''}: {
   stream:TextStream; session:StreamSession|null; label?:string; className?:string;
 }) {
@@ -15,12 +11,13 @@ export function SmoothedStreamingText({stream,session,label='Smoothed streaming 
   useLayoutEffect(() => {
     const container = element.current!;
     const animations = new Map<Animation,HTMLSpanElement>();
+    const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined,{granularity:'grapheme'}) : null;
     const motion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
     let cancelProbe: (()=>void) | null = null;
     const settle = () => {
       for (const [animation,span] of animations) {
-        animation.cancel(); // Underlying opacity is 1; no fill or inline .8 can remain.
-        span.removeAttribute('data-clarifying');
+        animation.cancel(); // Underlying opacity is 1; no hidden text remains.
+        span.removeAttribute('data-revealing');
       }
       animations.clear();
     };
@@ -34,25 +31,38 @@ export function SmoothedStreamingText({stream,session,label='Smoothed streaming 
         rendered.current = {stream,id:state.id,text:''};
       }
       if (state.text !== rendered.current.text) {
-        const firstReadable = rendered.current.text.trim() === '';
-        const span = document.createElement('span');
-        span.className = 'stream-readable-append';
-        span.textContent = state.text.slice(rendered.current.text.length);
-        // Commit before any animation setup. Re-entrant metric notifications cannot duplicate text.
+        const addition = state.text.slice(rendered.current.text.length);
+        const graphemes = segmenter ? Array.from(segmenter.segment(addition),part=>part.segment) : Array.from(addition);
+        const fragment = document.createDocumentFragment();
+        const nodes = graphemes.map(glyph=>{
+          const span = document.createElement('span');
+          span.className = 'stream-readable-append';
+          span.textContent = glyph;
+          fragment.append(span);
+          return span;
+        });
+        // Append synchronously, even when motion is disabled or animation is unavailable.
         rendered.current.text = state.text;
-        container.append(span);
-        if (!firstReadable && state.status === 'streaming' && !motion?.matches && document.visibilityState === 'visible' && typeof span.animate === 'function') {
-          try {
-            const animation = span.animate([{opacity:0.8},{opacity:1}],{duration:100,easing:'ease-out',fill:'none'});
-            animations.set(animation,span);
-            span.dataset.clarifying = 'true';
-            const forget = () => { animations.delete(animation); span.removeAttribute('data-clarifying'); };
-            animation.addEventListener('finish',forget,{once:true});
-            animation.addEventListener('cancel',forget,{once:true});
-          } catch { /* Unsupported animation never blocks or hides the committed text. */ }
+        container.append(fragment);
+        // Avoid unbounded DOM animation work in a burst. All text remains present and readable.
+        if (state.status === 'streaming' && !motion?.matches && document.visibilityState === 'visible' && nodes.length <= 96 && animations.size + nodes.length <= 160) {
+          const step = Math.min(22, 220 / Math.max(1,nodes.length - 1));
+          nodes.forEach((span,index)=>{
+            if (typeof span.animate !== 'function') return;
+            try {
+              const animation = span.animate([{opacity:0,transform:'translateX(-2px)'},{opacity:1,transform:'translateX(0)'}],
+                {duration:180,delay:index*step,easing:'ease-out',fill:'backwards'});
+              animations.set(animation,span);
+              span.dataset.revealing = 'true';
+              const forget = () => { animations.delete(animation); span.removeAttribute('data-revealing'); };
+              animation.addEventListener('finish',forget,{once:true});
+              animation.addEventListener('cancel',forget,{once:true});
+            } catch { /* No animation support: the underlying text is fully visible. */ }
+          });
         }
       }
-      if (state.status !== 'streaming') settle();
+      // Let the final fragment finish its reveal. Stop and error reveal all text at once.
+      if (state.status === 'interrupted' || state.status === 'error') settle();
       if (session?.id === state.id && state.text.trim()) {
         if (state.marks.firstCommitAt === null) session.committed();
         if (stream.getSnapshot().marks.firstVisibleAt === null && cancelProbe === null) cancelProbe = observeFirstVisible(container,session);
