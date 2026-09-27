@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'tests',testMatch:'browser.spec.ts',workers:1,use:{baseURL:'http://127.0.0.1:4318',viewport:{width:1280,height:900},launchOptions:process.env.STREAM_BROWSER_PATH?{executablePath:process.env.STREAM_BROWSER_PATH}:{}},webServer:{command:'npm run dev',url:'http://127.0.0.1:4318',reuseExistingServer:!process.env.CI},reporter:'list'});

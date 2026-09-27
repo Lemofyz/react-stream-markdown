@@ -1,0 +1,32 @@
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import {createTextStream,durations,scheduleFrame,type Schedule} from '../src/stream';
+function fixture(batch=true){
+ let time=0;let callbacks=new Map<number,()=>void>();let next=0;
+ const schedule:Schedule=cb=>{const id=++next;callbacks.set(id,cb);return()=>{callbacks.delete(id);};};
+ const stream=createTextStream({batch,now:()=>time,schedule});
+ const session=stream.begin();session.requestStarted();
+ return {stream,session,at:(ms:number)=>{time=ms;},tick:()=>{const work=[...callbacks.values()];callbacks.clear();work.forEach(cb=>cb());},pending:()=>callbacks.size};
+}
+describe('stream lifecycle and scheduling',()=>{
+ it('publishes the first readable fragment without waiting for a frame',()=>{const f=fixture();f.session.append('Read');expect(f.stream.getSnapshot().text).toBe('Read');expect(f.pending()).toBe(0);});
+ it('preserves 1,000 rapid deltas in order with one subsequent frame',()=>{const f=fixture();f.session.append('Start');for(let i=0;i<1000;i++)f.session.append(`${i},`);expect(f.stream.getSnapshot().text).toBe('Start');expect(f.pending()).toBe(1);f.tick();expect(f.stream.getSnapshot().text).toBe('Start'+Array.from({length:1000},(_,i)=>`${i},`).join(''));expect(f.stream.getSnapshot().publications).toBe(2);expect(f.stream.getSnapshot().fragments).toBe(1001);});
+ it('offers an honest per-event baseline',()=>{const f=fixture(false);f.session.append('a');f.session.append('b');expect(f.stream.getSnapshot().publications).toBe(2);expect(f.pending()).toBe(0);});
+ it('ignores empty chunks and measures the first non-whitespace text',()=>{const f=fixture();f.session.append('');f.session.append(' \n');expect(f.stream.getSnapshot().marks.firstTextAt).toBeNull();f.at(12);f.session.append('你好 👋');expect(f.stream.getSnapshot().text).toBe(' \n你好 👋');expect(f.stream.getSnapshot().marks.firstTextAt).toBe(12);});
+ it.each(['complete','interrupt','fail'] as const)('flushes pending text on %s and ignores late callbacks',kind=>{const f=fixture();f.session.append('a');f.session.append('b');if(kind==='fail')f.session.fail(new Error('offline'));else f.session[kind]();f.session.append('late');f.tick();expect(f.stream.getSnapshot().text).toBe('ab');expect(f.pending()).toBe(0);expect(f.stream.getSnapshot().status).toBe({complete:'complete',interrupt:'interrupted',fail:'error'}[kind]);});
+ it('retains the error and already received text',()=>{const f=fixture();f.session.append('partial');f.session.fail(new Error('network lost'));expect(f.stream.getSnapshot().error).toBe('network lost');expect(f.stream.getSnapshot().text).toBe('partial');});
+ it('rejects append before request dispatch is marked',()=>{const stream=createTextStream();const s=stream.begin();expect(()=>s.append('x')).toThrow('requestStarted');});
+ it('isolates restarts from stale text, finish, and visibility callbacks',()=>{const f=fixture();f.session.append('old');f.session.append(' pending');const newer=f.stream.begin();newer.requestStarted();newer.append('new');f.session.append('bad');f.session.complete();f.session.visible();f.tick();expect(f.stream.getSnapshot().text).toBe('new');expect(f.stream.getSnapshot().status).toBe('streaming');expect(f.stream.getSnapshot().marks.firstVisibleAt).toBeNull();});
+ it('does not mistake timestamp zero for a missing mark',()=>{const f=fixture();f.session.append('x');f.at(4);f.session.committed();f.at(16);f.session.visible();f.at(90);f.session.complete();expect(durations(f.stream.getSnapshot().marks)).toEqual({clickToRequestMs:0,timeToFirstTextMs:0,firstTextToCommitMs:4,firstTextToVisibleEstimateMs:16,firstTextToEndMs:90});});
+ it('records arrival before an adapter buffers a sentence',()=>{const f=fixture();f.at(200);f.session.textReceived();f.at(700);f.session.append('Buffered sentence.');f.session.committed();expect(durations(f.stream.getSnapshot().marks).firstTextToCommitMs).toBe(500);});
+ it('reports null for an empty reply, never fabricated zero latency',()=>{const f=fixture();f.session.complete();expect(durations(f.stream.getSnapshot().marks).timeToFirstTextMs).toBeNull();expect(durations(f.stream.getSnapshot().marks).firstTextToEndMs).toBeNull();});
+ it('makes terminal events idempotent',()=>{const f=fixture();f.session.append('x');f.at(2);f.session.complete();f.at(99);f.session.fail('late error');expect(f.stream.getSnapshot().marks.endedAt).toBe(2);expect(f.stream.getSnapshot().status).toBe('complete');});
+ it('unsubscribes listeners and leaves old snapshots immutable',()=>{const f=fixture();const old=f.stream.getSnapshot();const spy=vi.fn();const unsub=f.stream.subscribe(spy);f.session.append('x');expect(old.text).toBe('');expect(old.marks.firstTextAt).toBeNull();unsub();const count=spy.mock.calls.length;f.session.complete();expect(spy).toHaveBeenCalledTimes(count);});
+ it('disposal cancels queued work and rejects new runs',()=>{const f=fixture();f.session.append('a');f.session.append('b');f.stream.dispose();f.tick();f.session.append('late');expect(f.pending()).toBe(0);expect(f.stream.getSnapshot().text).toBe('a');expect(()=>f.stream.begin()).toThrow('disposed');});
+ it('does not leak state between controllers',()=>{const a=fixture();const b=fixture();a.session.append('a');expect(b.stream.getSnapshot().text).toBe('');});
+});
+describe('frame scheduler fallback',()=>{
+ afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+ it('flushes if animation frames are suspended, without calling twice',()=>{vi.useFakeTimers();let frame:(()=>void)|null=null;vi.stubGlobal('requestAnimationFrame',(cb:()=>void)=>{frame=cb;return 1;});vi.stubGlobal('cancelAnimationFrame',vi.fn());const spy=vi.fn();scheduleFrame(spy);vi.advanceTimersByTime(50);expect(spy).toHaveBeenCalledTimes(1);frame!();expect(spy).toHaveBeenCalledTimes(1);});
+ it('cancels both timer and frame',()=>{vi.useFakeTimers();vi.stubGlobal('requestAnimationFrame',()=>1);const cancel=vi.fn();vi.stubGlobal('cancelAnimationFrame',cancel);const spy=vi.fn();scheduleFrame(spy)();vi.advanceTimersByTime(100);expect(spy).not.toHaveBeenCalled();expect(cancel).toHaveBeenCalledWith(1);});
+});
+it('refines dispatch time with resource timing without rewriting first-text arrival',()=>{const f=fixture();f.at(200);f.session.append('x');f.session.complete();f.session.networkRequestStarted(5);const times=durations(f.stream.getSnapshot().marks);expect(times.clickToRequestMs).toBe(5);expect(times.timeToFirstTextMs).toBe(195);expect(f.stream.getSnapshot().marks.requestAt).toBe(0);});

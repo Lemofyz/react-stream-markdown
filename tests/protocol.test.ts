@@ -1,0 +1,7 @@
+import {expect,it} from 'vitest';
+import {readMockStream,sentenceExperiment,type MockEvent} from '../demo/protocol';
+it('decodes UTF-8 split across bytes and multiple NDJSON records in a packet',async()=>{const bytes=new TextEncoder().encode(JSON.stringify({type:'text',text:'你好🙂'})+'\n'+JSON.stringify({type:'done'})+'\n');const response=new Response(new ReadableStream({start(c){for(const byte of bytes)c.enqueue(new Uint8Array([byte]));c.close();}}));const events:MockEvent[]=[];await readMockStream(response,e=>events.push(e));expect(events).toEqual([{type:'text',text:'你好🙂'},{type:'done'}]);});
+it('reports premature close instead of silently declaring success',async()=>{await expect(readMockStream(new Response('{"type":"text","text":"partial"}\n'),()=>{})).rejects.toThrow('before done');});
+it('surfaces a server error',async()=>{await expect(readMockStream(new Response('{"type":"error","message":"synthetic failure"}\n'),()=>{})).rejects.toThrow('synthetic failure');});
+it('rejects malformed or unexpected messages',async()=>{await expect(readMockStream(new Response('{"type":"text","text":4}\n'),()=>{})).rejects.toThrow('Invalid');});
+it('holds a fragment until punctuation, and flushes unfinished text at the end',()=>{const out:string[]=[];const experiment=sentenceExperiment(s=>out.push(s));experiment.push('read now');expect(out).toEqual([]);experiment.push('. More');expect(out).toEqual(['read now.']);experiment.flush();expect(out.join('')).toBe('read now. More');});

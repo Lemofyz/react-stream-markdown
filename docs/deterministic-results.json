@@ -1,0 +1,85 @@
+{
+  "kind": "deterministic prescribed-clock simulation; not a browser performance claim",
+  "runs": [
+    {
+      "scenario": "punctuated",
+      "policy": "frame",
+      "firstPublicationAfterFirstTextMs": 0,
+      "clickToRequestMs": 80,
+      "timeToFirstTextMs": 200,
+      "firstTextToCommitMs": null,
+      "firstTextToVisibleEstimateMs": null,
+      "firstTextToEndMs": 720,
+      "text": "You can read before completion. More text."
+    },
+    {
+      "scenario": "punctuated",
+      "policy": "event",
+      "firstPublicationAfterFirstTextMs": 0,
+      "clickToRequestMs": 80,
+      "timeToFirstTextMs": 200,
+      "firstTextToCommitMs": null,
+      "firstTextToVisibleEstimateMs": null,
+      "firstTextToEndMs": 720,
+      "text": "You can read before completion. More text."
+    },
+    {
+      "scenario": "punctuated",
+      "policy": "sentence",
+      "firstPublicationAfterFirstTextMs": 360,
+      "clickToRequestMs": 80,
+      "timeToFirstTextMs": 200,
+      "firstTextToCommitMs": null,
+      "firstTextToVisibleEstimateMs": null,
+      "firstTextToEndMs": 720,
+      "text": "You can read before completion. More text."
+    },
+    {
+      "scenario": "no-punctuation",
+      "policy": "frame",
+      "firstPublicationAfterFirstTextMs": 0,
+      "clickToRequestMs": 80,
+      "timeToFirstTextMs": 200,
+      "firstTextToCommitMs": null,
+      "firstTextToVisibleEstimateMs": null,
+      "firstTextToEndMs": 720,
+      "text": "You can read before completion and more text"
+    },
+    {
+      "scenario": "no-punctuation",
+      "policy": "event",
+      "firstPublicationAfterFirstTextMs": 0,
+      "clickToRequestMs": 80,
+      "timeToFirstTextMs": 200,
+      "firstTextToCommitMs": null,
+      "firstTextToVisibleEstimateMs": null,
+      "firstTextToEndMs": 720,
+      "text": "You can read before completion and more text"
+    },
+    {
+      "scenario": "no-punctuation",
+      "policy": "sentence",
+      "firstPublicationAfterFirstTextMs": 720,
+      "clickToRequestMs": 80,
+      "timeToFirstTextMs": 200,
+      "firstTextToCommitMs": null,
+      "firstTextToVisibleEstimateMs": null,
+      "firstTextToEndMs": 720,
+      "text": "You can read before completion and more text"
+    }
+  ],
+  "burst": [
+    {
+      "policy": "frame",
+      "fragments": 1000,
+      "publications": 2,
+      "length": 1000
+    },
+    {
+      "policy": "event",
+      "fragments": 1000,
+      "publications": 1000,
+      "length": 1000
+    }
+  ]
+}
