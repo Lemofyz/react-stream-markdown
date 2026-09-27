@@ -140,7 +140,7 @@
     "Text publications are not React renders or CPU speed",
     "No human readability study",
     "Local Playwright process launch restricted; browser harness executed through connector",
-    "Reduced-motion emulation and mobile Playwright checks are configured for CI, not claimed as local CLI results"
+    "Reduced-motion emulation and mobile Playwright checks are configured in the wrapper; CI example is inactive; neither is claimed as local CLI results"
   ],
   "noPunctuationRun": {
     "method": "one additional Chrome same-stream trial; rounded ms",

@@ -129,7 +129,7 @@ npm run test:browser
 # STREAM_BROWSER_PATH='/path/to/chrome' npm run test:browser
 ```
 
-The agent's local shell could not launch Chrome under its sandbox. The recorded Mac browser results came from the foreground Chrome harness via the browser connector; they are not claimed as a successful local Playwright CLI run. GitHub CI runs the CLI checks independently.
+The agent's local shell could not launch Chrome under its sandbox. The recorded Mac browser results came from the foreground Chrome harness via the browser connector; they are not claimed as a successful local Playwright CLI run. An inactive [CI configuration example](.github/ci-example.yml) runs the CLI checks when moved to `.github/workflows/ci.yml`. It is not enabled: the publishing credential lacks GitHub workflow scope. No CI success is claimed.
 
 ## Maintenance
 

@@ -29,7 +29,7 @@ The deterministic benchmark intentionally uses a fake clock/scheduler. It establ
 
 The foreground local `/browser-checks.html` harness passed **8/8** checks using real loopback HTTP. It verified incomplete-sentence display before completion, burst correctness, abort before first text, interruption retention, restart isolation, transport failure retention, literal HTML escaping, and fully opaque unanimated content. The 1,001-fragment HTTP test published text **3** times; this count can vary with network packet/read/frame grouping. All characters survived.
 
-The browser connector ran the harness because spawning Chrome from the agent's shell was restricted. This is not described as a successful local Playwright CLI execution. `npm run test:browser` and GitHub CI wrap the same harness, emulate reduced motion, and check a mobile viewport. Their outcomes must be checked separately.
+The browser connector ran the harness because spawning Chrome from the agent's shell was restricted. This is not described as a successful local Playwright CLI execution. `npm run test:browser` wraps the same harness, emulates reduced motion, and checks a mobile viewport. The inactive `.github/ci-example.yml` can enable these checks in GitHub Actions; the current publishing credential lacks workflow scope. No remote CI run has occurred.
 
 Three completed normal demo runs shared each HTTP response between all policies. Measured ranges (rounded to 0.1 ms):
 
@@ -45,7 +45,7 @@ One additional no-punctuation browser trial measured first-text-to-visible estim
 
 Preparation is configured to 80 ms, the mock first-text delay to 200 ms. These are synthetic values plus local overhead, not model timings. A sentence buffer visibly delayed the first text here. The immediate baseline already had comparable first-text speed. There is no statistically powered performance comparison, CPU profile, cross-browser guarantee, or human-readability experiment.
 
-See [machine-readable browser evidence](browser-results.json) and [deterministic results](deterministic-results.json). The reply itself has no animation, so content is immediate under either motion preference; a real reduced-motion browser run is part of the CI wrapper.
+See [machine-readable browser evidence](browser-results.json) and [deterministic results](deterministic-results.json). The reply itself has no animation, so content is immediate under either motion preference; a real reduced-motion browser run is configured in the Playwright wrapper but is not claimed as a local CLI pass.
 
 ## Repeat
 
