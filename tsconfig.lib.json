@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.json","compilerOptions":{"noEmit":false,"declaration":true,"outDir":"lib","rootDir":"src","types":[]},"include":["src"],"exclude":["tests","demo"]}

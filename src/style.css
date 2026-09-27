@@ -1,0 +1,5 @@
+/* Real content is never hidden, faded, translated, or typed out by an animation. */
+.stream-readable { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+@media (prefers-reduced-motion: reduce) {
+  .stream-readable { animation: none !important; transition: none !important; scroll-behavior: auto; }
+}
