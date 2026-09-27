@@ -3,6 +3,7 @@ import {flushSync} from 'react-dom';
 import {createTextStream,StreamingText,durations,type StreamSession} from '../src/index';
 import {readMockStream} from '../demo/protocol';
 import '../src/style.css';
+import {runSmoothingChecks} from './smoothing-browser-checks';
 const fixture=document.getElementById('fixture')!;
 const root=createRoot(fixture);
 const results:{name:string;passed:boolean;detail?:unknown}[]=[];
@@ -22,6 +23,7 @@ document.getElementById('run')!.addEventListener('click',async()=>{
  await check('transport error keeps partial text and reports failure',async()=>{const f=mount();await transport(f.session,'error');assert(f.stream.getSnapshot().status==='error','wrong status');assert(f.stream.getSnapshot().error==='Synthetic transport failure','missing error');assert(f.stream.getSnapshot().text.includes('You can start reading'),'partial text lost');});
  await check('HTML-shaped text is rendered as text',async()=>{const f=mount();f.session.requestStarted();f.session.append('<img src=x onerror=alert(1)>');f.session.complete();await until(()=>fixture.textContent?.includes('<img')===true);assert(!fixture.querySelector('img'),'unsafe HTML injection');});
  await check('content has no animation and remains fully opaque',async()=>{const el=fixture.querySelector('.stream-readable')!;const style=getComputedStyle(el);assert(style.animationName==='none','content animation');assert(style.opacity==='1','hidden content');assert(style.transform==='none','translated content');assert(style.transitionDuration==='0s','content transition');return {reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:style.animationName,opacity:style.opacity};});
+ results.push(...await runSmoothingChecks(root,fixture));
  document.getElementById('results')!.textContent=JSON.stringify({userAgent:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight},reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,passed:results.filter(r=>r.passed).length,total:results.length,results},null,2);
  document.getElementById('status')!.textContent=results.every(r=>r.passed)?'PASS':'FAIL';(document.getElementById('run') as HTMLButtonElement).disabled=false;
 });

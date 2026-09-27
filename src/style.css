@@ -1,5 +1,7 @@
-/* Real content is never hidden, faded, translated, or typed out by an animation. */
 .stream-readable { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+/* The original renderer and first smoothed fragment have no entrance animation. */
+.stream-readable-append { opacity: 1; }
+/* WAAPI decoration is also disabled/cancelled by the reduced-motion listener. */
 @media (prefers-reduced-motion: reduce) {
-  .stream-readable { animation: none !important; transition: none !important; scroll-behavior: auto; }
+  .stream-readable, .stream-readable-append { animation: none !important; transition: none !important; scroll-behavior: auto; opacity: 1; }
 }

@@ -7,13 +7,16 @@ const mockStream = (): Plugin => ({
     let raw='';
     for await (const part of req) { raw+=part; if(raw.length>4096){res.statusCode=413;res.end();return;} }
     let scenario: string;
-    try { scenario=JSON.parse(raw).scenario; } catch {res.statusCode=400;res.end();return;}
+    let playback: string;
+    try { const body=JSON.parse(raw); scenario=body.scenario; playback=body.playback??'normal'; } catch {res.statusCode=400;res.end();return;}
     if(!['normal','burst','no-punctuation','error'].includes(scenario)){res.statusCode=400;res.end();return;}
+    if(!['normal','slow'].includes(playback)){res.statusCode=400;res.end();return;}
+    const speed=playback==='slow'?4:1;
     res.writeHead(200,{'Content-Type':'application/x-ndjson','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     res.flushHeaders();
     const timers: ReturnType<typeof setTimeout>[]=[];
     const write=(event: object)=>{if(!res.destroyed)res.write(JSON.stringify(event)+'\n');};
-    const at=(ms:number,fn:()=>void)=>timers.push(setTimeout(()=>{if(!res.destroyed)fn();},ms));
+    const at=(ms:number,fn:()=>void)=>timers.push(setTimeout(()=>{if(!res.destroyed)fn();},200+Math.max(0,ms-200)*speed));
     // Entirely synthetic text; no models, accounts, keys, or external services.
     at(200,()=>write({type:'text',text:'You can start reading'}));
     if(scenario==='burst') {
@@ -29,4 +32,4 @@ const mockStream = (): Plugin => ({
     res.on('close',()=>timers.forEach(clearTimeout));
   }); },
 });
-export default defineConfig({plugins:[mockStream()],server:{host:'127.0.0.1',port:4318,strictPort:true},test:{environment:'jsdom',include:['tests/**/*.test.{ts,tsx}']}});
+export default defineConfig({optimizeDeps:{include:['react','react-dom','react-dom/client','react/jsx-runtime','react/jsx-dev-runtime']},plugins:[mockStream()],server:{host:'127.0.0.1',port:4318,strictPort:true},test:{environment:'jsdom',include:['tests/**/*.test.{ts,tsx}']}});

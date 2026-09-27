@@ -1,6 +1,6 @@
 {
   "name": "stream-readable",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Measure and display streaming text without sentence buffering.",
