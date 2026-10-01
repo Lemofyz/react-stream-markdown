@@ -1,6 +1,6 @@
 # Stream Readable
 
-A small TypeScript/React streaming-text component and latency lab maintained by [@Lemofly](https://github.com/Lemofly).
+A small TypeScript/React streaming-text component and latency lab maintained by [@Lemofyz](https://github.com/Lemofyz).
 
 Publish received fragments immediately. Compare the original frame-batched renderer with a letter-by-letter reveal. Measure where the wait happens; the reveal deliberately adds a short visual delay.
 
@@ -23,7 +23,7 @@ This is plain text, not a Markdown renderer, sentence segmenter, provider SDK, o
 Node.js **24** is the tested version. Install dependencies from the committed lockfile:
 
 ```sh
-git clone https://github.com/Lemofly/stream-readable.git
+git clone https://github.com/Lemofyz/stream-readable.git
 cd stream-readable
 npm ci
 npm run dev
