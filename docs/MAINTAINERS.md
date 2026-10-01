@@ -1,6 +1,6 @@
 # Maintenance and provenance
 
-Maintainer: [@Lemofly](https://github.com/Lemofly).
+Maintainer: [@Lemofyz](https://github.com/Lemofyz).
 
 The initial implementation, demo, tests, and documentation were generated with OpenAI Codex under the maintainer's direction. This repository does not claim that the maintainer manually wrote the generated code. Commits label the AI-assisted work and keep the implementation, verification, and documentation separate for review and learning.
 
