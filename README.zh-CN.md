@@ -6,6 +6,17 @@
 
 一个长回答，模型往往要生成 10 秒甚至更久。如果界面等完整结果出来再显示，用户就要一直盯着加载动画，最后再一下子面对一大段文字。Stream Readable 在**每个片段到达时**就把它渲染成 Markdown，用户收到第一个 token 就能开始读，后面的内容还在继续生成。
 
+## 性能基准测试
+
+| | **stream-readable** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
+|---|--:|--:|--:|--:|
+| 打包体积（gzip） | **7.0 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
+| 直接运行时依赖 | **0** | 15 | 12 | 17 |
+| 渲染 1 万字回答的主线程耗时 | **1.1 秒**（开淡入 2.9 秒） | 2.0 秒 | 2.6 秒 | 6.4 秒 |
+| 单次更新最慢耗时 | **3.3 ms**（开淡入 7.3 ms） | 15.3 ms | 14.4 ms | 38.7 ms |
+
+<sub>无头 Chromium 141，生产构建，取 3 次的中位数。测试回答包含嵌套列表、代码块和表格，每帧到达 24 个字符。用 [`bench/`](bench) 里的脚本可以复现，测试方法和注意事项见[实测数据详情](#实测数据详情)。</sub>
+
 ![左：等完整回复再显示。右：Stream Readable 边接收边渲染 Markdown。](docs/media/demo-zh.gif)
 
 *两个面板回放的是同一条模拟片段时间线。左边等最后一个片段，右边每个片段到达就显示。*
@@ -22,7 +33,57 @@
 | 淡入效果 | 很难只作用于新文字 | 只有新到的字符会淡入 |
 | 不可信的模型输出 | 取决于渲染器（`marked` + `innerHTML` 需要额外清洗） | 完全不用 `innerHTML`：原始 HTML 当文本显示，只允许 `http(s)`/`mailto` 链接 |
 
-零运行时依赖，gzip 后约 8 kB（React 为 peer 依赖）。
+零运行时依赖，gzip 后 7.0 kB（React 为 peer 依赖）。和其他库的对比见[性能基准测试](#性能基准测试)。
+
+## 和同类项目对比
+
+这类库不止这一个，按需求选：
+
+| | Stream Readable | [Vercel Streamdown](https://github.com/vercel/streamdown) | [lobehub/streamdown](https://github.com/lobehub/streamdown) |
+|---|---|---|---|
+| 定位 | 小巧的流式 Markdown 渲染器 | 可以直接替换 react-markdown 的完整方案 | 无样式的流式 Markdown 引擎 |
+| 依赖 | 自带解析器，零运行时依赖 | remark/rehype；Shiki、KaTeX、Mermaid 以插件形式提供 | react-markdown、marked、KaTeX、remend |
+| 体积（gzip） | 7.0 kB | 核心 164.0 kB | 147.8 kB |
+| 没写完的语法 | 提前按最终样式渲染 | 自动补全（remend） | 自动补全（remend） |
+| 写完的块 | 冻结，不再改动 | 缓存（memoized） | 缓存，只重新渲染末尾 |
+| 淡入 | 按字符，可关闭 | 可选（`animated`） | 按字符或按词，有节奏预设 |
+| 代码高亮、数学公式、图表 | 不支持 | 支持 | 支持数学公式 |
+| 不可信的 HTML | 从不解析，DOM 不用 `innerHTML` 构建 | 加固处理（rehype-harden） | 由 react-markdown 处理 |
+
+其他选择：[llm-ui](https://github.com/llm-ui-kit/llm-ui) 会隐藏写坏的 Markdown、按帧率平滑输出，还能在回答里渲染自定义组件；[FlowToken](https://github.com/Ephibbs/flowtoken) 专注文字动画（淡入、模糊、打字机等）。
+
+**怎么选：**需要代码高亮、数学公式、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 Stream Readable。
+
+## 实测数据详情
+
+以下数字都是实际测出来的，不是估算。测试脚本在 [`bench/`](bench) 目录（`cd bench && npm install && npm run size && npm run speed`）。
+
+**打包体积**（已经有 React 的项目引入各库后增加的体积；生产构建、压缩后）：
+
+| 库 | 压缩后 | gzip 后 |
+|---|--:|--:|
+| **stream-readable**（`StreamingMarkdown` + `createTextStream`） | **20.3 kB** | **7.0 kB** |
+| react-markdown + remark-gfm | 206.2 kB | 51.4 kB |
+| @lobehub/streamdown 1.4.0 | 602.6 kB | 147.8 kB |
+| streamdown（Vercel）2.7.0，不含插件的核心 | 619.5 kB | 164.0 kB |
+
+另外 `style.css` 约 0.9 kB（gzip 后）。
+
+**渲染开销**：流式输出一段 10,201 字符的回答（含嵌套列表、代码块、表格、引用），每帧追加 24 个字符，共 426 个片段。React 生产构建，无头 Chromium 141，取 3 次的中位数。"主线程耗时"取自 Chrome 自带的 `TaskDuration` 计数（脚本、样式、布局、绘制），从第一个片段开始，到输出不再变化为止。
+
+| 渲染器 | 整段回答的主线程耗时 | 单次更新最慢 | 最后 20 个片段平均每次更新 |
+|---|--:|--:|--:|
+| **stream-readable**，`animate={false}` | **1,100 ms** | **3.3 ms** | **0.9 ms** |
+| streamdown（Vercel） | 2,031 ms | 15.3 ms | 2.5 ms |
+| @lobehub/streamdown（`realtime`） | 2,609 ms | 14.4 ms | 2.6 ms |
+| **stream-readable**，开启淡入（默认） | 2,941 ms | 7.3 ms | 2.0 ms |
+| react-markdown + remark-gfm，每个片段整段重渲染 | 6,384 ms | 38.7 ms | 24.3 ms |
+
+为什么回答变长了，每次更新的开销还是不变：回答被切成块，不会再变的块直接冻结，只重新解析正在写的那一块。新的块结构会和上一次做对比，再用 DOM API（`createElement`、`textContent`、`setAttribute`）打补丁，已经显示的节点直接复用，不会重建。
+
+淡入不是免费的：给每个新字符做动画，在这段回答里大约多花 1.8 秒主线程时间，平均每帧约 4 ms。这些开销分摊在每一帧里（单次更新不超过 7.3 ms），但在低端设备或超长回答里，可以考虑 `animate={false}`。
+
+**耗时测量**（`durations`、首次提交和首次可见的标记）是可选的：不传 `session` 就不会运行探测；不 import `durations`，打包时会被 tree-shaking 去掉。可见性探测 gzip 后约 0.6 kB，每次回答只运行几帧。
 
 ## 快速开始
 
@@ -31,18 +92,14 @@ npm i stream-readable
 ```
 
 ```tsx
-import {useState} from 'react';
-import {createTextStream, StreamingMarkdown, type StreamSession} from 'stream-readable';
+import {createTextStream, StreamingMarkdown} from 'stream-readable';
 import 'stream-readable/style.css';
 
 const stream = createTextStream();
 
 export function Answer() {
-  const [session, setSession] = useState<StreamSession | null>(null);
-
   async function ask(question: string) {
     const s = stream.begin();          // 开始新回答；旧请求迟到的片段会被忽略
-    setSession(s);
     s.requestStarted();
     try {
       const response = await fetch('/api/chat', {method: 'POST', body: JSON.stringify({question})});
@@ -60,7 +117,7 @@ export function Answer() {
 
   return <>
     <button onClick={() => ask('解释一下流式输出')}>提问</button>
-    <StreamingMarkdown stream={stream} session={session} />
+    <StreamingMarkdown stream={stream} />
   </>;
 }
 ```
@@ -99,7 +156,7 @@ source.onerror = () => { s.fail(new Error('连接中断')); source.close(); };
 | `session.append(delta)` | 追加新文本。传增量，不是累计全文。 |
 | `session.complete()` / `session.interrupt()` / `session.fail(error)` | 结束回答，文字保留。 |
 
-### `<StreamingMarkdown stream session animate? label? className? />`
+### `<StreamingMarkdown stream session? animate? label? className? />`
 
 把回答渲染为 Markdown，`animate` 默认 `true`。默认样式在 `stream-readable/style.css` 里，继承你页面的字体和颜色；代码块带 `language-*` 类名。
 

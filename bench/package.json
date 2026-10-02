@@ -1,0 +1,22 @@
+{
+  "name": "stream-readable-bench",
+  "private": true,
+  "type": "module",
+  "description": "Size and speed comparison with other streaming Markdown renderers. Not part of the published package.",
+  "scripts": {
+    "size": "node size.mjs",
+    "speed": "node speed.mjs"
+  },
+  "dependencies": {
+    "@lobehub/streamdown": "1.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "streamdown": "2.7.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "vite": "^8.3.1"
+  }
+}
