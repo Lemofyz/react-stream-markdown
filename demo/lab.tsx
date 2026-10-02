@@ -83,7 +83,7 @@ function App() {
     if(new URLSearchParams(location.search).get('autoplay')==='1'&&!autoplayed.current){autoplayed.current=true;void run();}
   },[]);
   return <main>
-    <header><div className="eyebrow">STREAM READABLE / LATENCY LAB</div><h1>Watch each letter.<br/><span>Measure the wait.</span></h1><p>Original and Letter reveal receive the same fragments from one request. Watch each new letter fade in from left to right while the reply arrives.</p></header>
+    <header><div className="eyebrow">REACT STREAM MARKDOWN / LATENCY LAB</div><h1>Watch each letter.<br/><span>Measure the wait.</span></h1><p>Original and Letter reveal receive the same fragments from one request. Watch each new letter fade in from left to right while the reply arrives.</p></header>
     <form className="controls" onSubmit={e=>{e.preventDefault();void run();}}>
       <label>Stream scenario<select value={scenario} onChange={e=>setScenario(e.target.value)}><option value="normal">Normal fragments</option><option value="burst">1,000-fragment burst</option><option value="no-punctuation">No sentence boundary</option><option value="error">Transport error</option></select></label>
       <label>Playback<select value={playback} onChange={e=>setPlayback(e.target.value)}><option value="normal">Normal arrival intervals</option><option value="slow">Slow · 4× arrival intervals</option></select></label>

@@ -84,5 +84,5 @@ export function StreamingMarkdown({stream,session,label='Streaming reply',classN
     update();
     return () => { unsubscribe(); reveal.dispose(); cancelProbe?.(); };
   },[stream,session]);
-  return <div ref={element} className={`stream-readable-md ${className}`} role="region" aria-label={label}/>;
+  return <div ref={element} className={`rsm-markdown ${className}`} role="region" aria-label={label}/>;
 }

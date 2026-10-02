@@ -1,6 +1,6 @@
 {
-  "name": "stream-readable",
-  "version": "0.3.0",
+  "name": "react-stream-markdown",
+  "version": "0.3.1",
   "description": "Render streaming AI replies as Markdown while they are still being written. React, zero dependencies.",
   "keywords": [
     "streaming",
@@ -14,12 +14,12 @@
     "claude",
     "typewriter"
   ],
-  "homepage": "https://lemofyz.github.io/stream-readable/",
+  "homepage": "https://lemofyz.github.io/react-stream-markdown/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Lemofyz/stream-readable.git"
+    "url": "git+https://github.com/Lemofyz/react-stream-markdown.git"
   },
-  "bugs": "https://github.com/Lemofyz/stream-readable/issues",
+  "bugs": "https://github.com/Lemofyz/react-stream-markdown/issues",
   "license": "MIT",
   "type": "module",
   "sideEffects": [

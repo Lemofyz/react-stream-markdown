@@ -19,7 +19,7 @@ for await (const chunk of response) {
 session.complete();
 \`\`\`
 
-| | Wait for full reply | Stream Readable |
+| | Wait for full reply | react-stream-markdown |
 |---|---|---|
 | First words on screen | after the last token | with the first token |
 | Reading starts | when generation ends | immediately |
@@ -45,7 +45,7 @@ for await (const chunk of response) {
 session.complete();
 \`\`\`
 
-| | 等完整回复 | Stream Readable |
+| | 等完整回复 | react-stream-markdown |
 |---|---|---|
 | 第一行字出现 | 最后一个 token 之后 | 第一个 token 到达时 |
 | 开始阅读 | 生成结束后 | 立刻 |

@@ -13,7 +13,7 @@ function inline(node: Inline): VNode {
     case 'code': return el('code',[node.value]);
     case 'strong': case 'em': case 'del': return el(node.type,node.children.map(inline));
     case 'link': return node.href === null
-      ? el('span',node.children.map(inline),{class:'sr-link-pending'})
+      ? el('span',node.children.map(inline),{class:'rsm-link-pending'})
       : el('a',node.children.map(inline),{href:node.href,target:'_blank',rel:'noopener noreferrer nofollow'});
   }
 }
@@ -28,13 +28,13 @@ export function blockToVNode(block: Block,tight = false): VNode[] {
       const children = item.children.flatMap(b=>blockToVNode(b,block.tight));
       if (item.checked === null) return el('li',children);
       const box = el('input',[],item.checked ? {type:'checkbox',disabled:'',checked:''} : {type:'checkbox',disabled:''});
-      return el('li',[box,...children],{class:'sr-task'});
+      return el('li',[box,...children],{class:'rsm-task'});
     }),block.ordered && block.start !== 1 ? {start:String(block.start)} : undefined)];
     case 'table': {
       const cell = (tag: string,content: Inline[],c: number) => el(tag,content.map(inline),block.align[c] ? {'data-align':block.align[c]!} : undefined);
       const head = el('thead',[el('tr',block.head.map((c,i)=>cell('th',c,i)))]);
       const body = block.rows.length ? [el('tbody',block.rows.map(row=>el('tr',row.map((c,i)=>cell('td',c,i)))))] : [];
-      return [el('div',[el('table',[head,...body])],{class:'sr-table'})];
+      return [el('div',[el('table',[head,...body])],{class:'rsm-table'})];
     }
   }
 }
@@ -64,7 +64,7 @@ function appendText(wrapper: HTMLElement,text: string,at: number,ctx: PatchConte
     else {
       if (settled) { wrapper.append(settled); settled = ''; }
       const span = document.createElement('span');
-      span.className = 'stream-readable-append';
+      span.className = 'rsm-append';
       span.textContent = glyph;
       wrapper.append(span);
       ctx.spans.push(span);

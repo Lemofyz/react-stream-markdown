@@ -1,5 +1,5 @@
 {
-  "name": "stream-readable-bench",
+  "name": "react-stream-markdown-bench",
   "private": true,
   "type": "module",
   "description": "Size and speed comparison with other streaming Markdown renderers. Not part of the published package.",

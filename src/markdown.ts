@@ -196,7 +196,7 @@ const bareUrl = /^https?:\/\/[^\s<>]*[^\s<>.,:;"')\]!?*_~]/;
 /** Only web and mail links. Anything else (javascript:, data:, …) renders as plain text. */
 export function safeHref(raw: string): string|null {
   try {
-    const url = new URL(raw,'https://stream-readable.invalid/');
+    const url = new URL(raw,'https://react-stream-markdown.invalid/');
     return ['http:','https:','mailto:'].includes(url.protocol) ? raw : null;
   } catch { return null; }
 }

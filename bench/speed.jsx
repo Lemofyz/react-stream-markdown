@@ -63,8 +63,8 @@ function ours(animate) {
 
 window.runBench = async (only) => {
   const runs = [
-    ['stream-readable StreamingMarkdown', ours(false)],
-    ['stream-readable StreamingMarkdown + fade', ours(true)],
+    ['react-stream-markdown StreamingMarkdown', ours(false)],
+    ['react-stream-markdown StreamingMarkdown + fade', ours(true)],
     ['streamdown (Vercel)', reactSetup((text, streaming) => <VercelStreamdown mode={streaming ? 'streaming' : 'static'} isAnimating={streaming}>{text}</VercelStreamdown>)],
     ['@lobehub/streamdown (realtime)', reactSetup(text => <LobeStreamdown content={text} smoothing="realtime" remarkPlugins={[remarkGfm]}/>)],
     ['react-markdown + remark-gfm (re-render all)', reactSetup(text => <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>)],

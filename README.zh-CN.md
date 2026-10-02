@@ -1,14 +1,14 @@
-# Stream Readable
+# react-stream-markdown
 
 **边生成，边阅读：让 AI 的回答在生成过程中就能被看到。**
 
-[在线演示](https://lemofyz.github.io/stream-readable/?lang=zh) · [English](README.md) · `npm i stream-readable`
+[在线演示](https://lemofyz.github.io/react-stream-markdown/?lang=zh) · [English](README.md) · `npm i react-stream-markdown`
 
-一个长回答，模型往往要生成 10 秒甚至更久。如果界面等完整结果出来再显示，用户就要一直盯着加载动画，最后再一下子面对一大段文字。Stream Readable 在**每个片段到达时**就把它渲染成 Markdown，用户收到第一个 token 就能开始读，后面的内容还在继续生成。
+一个长回答，模型往往要生成 10 秒甚至更久。如果界面等完整结果出来再显示，用户就要一直盯着加载动画，最后再一下子面对一大段文字。react-stream-markdown 在**每个片段到达时**就把它渲染成 Markdown，用户收到第一个 token 就能开始读，后面的内容还在继续生成。
 
 ## 性能基准测试
 
-| | **stream-readable** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
+| | **react-stream-markdown** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
 |---|--:|--:|--:|--:|
 | 打包体积（gzip） | **7.0 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
 | 直接运行时依赖 | **0** | 15 | 12 | 17 |
@@ -17,7 +17,7 @@
 
 <sub>无头 Chromium 141，生产构建，取 3 次的中位数。测试回答包含嵌套列表、代码块和表格，每帧到达 24 个字符。用 [`bench/`](bench) 里的脚本可以复现，测试方法和注意事项见[实测数据详情](#实测数据详情)。</sub>
 
-![左：等完整回复再显示。右：Stream Readable 边接收边渲染 Markdown。](docs/media/demo-zh.gif)
+![左：等完整回复再显示。右：react-stream-markdown 边接收边渲染 Markdown。](docs/media/demo-zh.gif)
 
 *两个面板回放的是同一条模拟片段时间线。左边等最后一个片段，右边每个片段到达就显示。*
 
@@ -25,7 +25,7 @@
 
 做个 demo 可以，放到真实的长回答里就会出问题：
 
-| | 每次重新渲染整段 | Stream Readable |
+| | 每次重新渲染整段 | react-stream-markdown |
 |---|---|---|
 | 每个片段的开销 | 整段重新解析、重新渲染 | 写完的块直接冻结，只更新正在写的那一块 |
 | 写到一半的语法 | `**粗` 先闪出星号，然后跳变 | 立刻显示成 **粗**；没闭合的代码块直接显示为代码 |
@@ -39,7 +39,7 @@
 
 这类库不止这一个，按需求选：
 
-| | Stream Readable | [Vercel Streamdown](https://github.com/vercel/streamdown) | [lobehub/streamdown](https://github.com/lobehub/streamdown) |
+| | react-stream-markdown | [Vercel Streamdown](https://github.com/vercel/streamdown) | [lobehub/streamdown](https://github.com/lobehub/streamdown) |
 |---|---|---|---|
 | 定位 | 小巧的流式 Markdown 渲染器 | 可以直接替换 react-markdown 的完整方案 | 无样式的流式 Markdown 引擎 |
 | 依赖 | 自带解析器，零运行时依赖 | remark/rehype；Shiki、KaTeX、Mermaid 以插件形式提供 | react-markdown、marked、KaTeX、remend |
@@ -52,7 +52,7 @@
 
 其他选择：[llm-ui](https://github.com/llm-ui-kit/llm-ui) 会隐藏写坏的 Markdown、按帧率平滑输出，还能在回答里渲染自定义组件；[FlowToken](https://github.com/Ephibbs/flowtoken) 专注文字动画（淡入、模糊、打字机等）。
 
-**怎么选：**需要代码高亮、数学公式、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 Stream Readable。
+**怎么选：**需要代码高亮、数学公式、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 react-stream-markdown。
 
 ## 实测数据详情
 
@@ -62,7 +62,7 @@
 
 | 库 | 压缩后 | gzip 后 |
 |---|--:|--:|
-| **stream-readable**（`StreamingMarkdown` + `createTextStream`） | **20.3 kB** | **7.0 kB** |
+| **react-stream-markdown**（`StreamingMarkdown` + `createTextStream`） | **20.3 kB** | **7.0 kB** |
 | react-markdown + remark-gfm | 206.2 kB | 51.4 kB |
 | @lobehub/streamdown 1.4.0 | 602.6 kB | 147.8 kB |
 | streamdown（Vercel）2.7.0，不含插件的核心 | 619.5 kB | 164.0 kB |
@@ -73,10 +73,10 @@
 
 | 渲染器 | 整段回答的主线程耗时 | 单次更新最慢 | 最后 20 个片段平均每次更新 |
 |---|--:|--:|--:|
-| **stream-readable**，`animate={false}` | **1,100 ms** | **3.3 ms** | **0.9 ms** |
+| **react-stream-markdown**，`animate={false}` | **1,100 ms** | **3.3 ms** | **0.9 ms** |
 | streamdown（Vercel） | 2,031 ms | 15.3 ms | 2.5 ms |
 | @lobehub/streamdown（`realtime`） | 2,609 ms | 14.4 ms | 2.6 ms |
-| **stream-readable**，开启淡入（默认） | 2,941 ms | 7.3 ms | 2.0 ms |
+| **react-stream-markdown**，开启淡入（默认） | 2,941 ms | 7.3 ms | 2.0 ms |
 | react-markdown + remark-gfm，每个片段整段重渲染 | 6,384 ms | 38.7 ms | 24.3 ms |
 
 为什么回答变长了，每次更新的开销还是不变：回答被切成块，不会再变的块直接冻结，只重新解析正在写的那一块。新的块结构会和上一次做对比，再用 DOM API（`createElement`、`textContent`、`setAttribute`）打补丁，已经显示的节点直接复用，不会重建。
@@ -88,12 +88,12 @@
 ## 快速开始
 
 ```sh
-npm i stream-readable
+npm i react-stream-markdown
 ```
 
 ```tsx
-import {createTextStream, StreamingMarkdown} from 'stream-readable';
-import 'stream-readable/style.css';
+import {createTextStream, StreamingMarkdown} from 'react-stream-markdown';
+import 'react-stream-markdown/style.css';
 
 const stream = createTextStream();
 
@@ -158,7 +158,7 @@ source.onerror = () => { s.fail(new Error('连接中断')); source.close(); };
 
 ### `<StreamingMarkdown stream session? animate? label? className? />`
 
-把回答渲染为 Markdown，`animate` 默认 `true`。默认样式在 `stream-readable/style.css` 里，继承你页面的字体和颜色；代码块带 `language-*` 类名。
+把回答渲染为 Markdown，`animate` 默认 `true`。默认样式在 `react-stream-markdown/style.css` 里，继承你页面的字体和颜色；代码块带 `language-*` 类名。
 
 ### 其他导出
 
@@ -171,8 +171,8 @@ source.onerror = () => { s.fail(new Error('连接中断')); source.close(); };
 ## 本地运行演示
 
 ```sh
-git clone https://github.com/Lemofyz/stream-readable.git
-cd stream-readable
+git clone https://github.com/Lemofyz/react-stream-markdown.git
+cd react-stream-markdown
 npm ci
 npm run dev        # http://127.0.0.1:4318（演示），/lab.html（延迟实验室）
 npm test           # 单元测试和组件测试

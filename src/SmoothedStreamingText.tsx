@@ -26,7 +26,7 @@ export function SmoothedStreamingText({stream,session,label='Smoothed streaming 
         const fragment = document.createDocumentFragment();
         const nodes = graphemes(addition).map(glyph=>{
           const span = document.createElement('span');
-          span.className = 'stream-readable-append';
+          span.className = 'rsm-append';
           span.textContent = glyph;
           fragment.append(span);
           return span;
@@ -47,5 +47,5 @@ export function SmoothedStreamingText({stream,session,label='Smoothed streaming 
     update();
     return () => { unsubscribe(); reveal.dispose(); cancelProbe?.(); };
   },[stream,session]);
-  return <div ref={element} className={`stream-readable stream-readable-smoothed ${className}`} role="region" aria-label={label}/>;
+  return <div ref={element} className={`rsm-text rsm-smoothed ${className}`} role="region" aria-label={label}/>;
 }

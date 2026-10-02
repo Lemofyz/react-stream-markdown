@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 — 2026-10-02 — Renamed to react-stream-markdown
+
+- The package, repository and demo are now `react-stream-markdown` (was `stream-readable`, which was easy to confuse with Node's `readable-stream`). The package had not been published under the old name.
+- CSS classes use the short `rsm-` prefix: `rsm-markdown`, `rsm-text`, `rsm-smoothed`, `rsm-append`, `rsm-table`, `rsm-task`, `rsm-link-pending`.
+
 ## 0.3.0 — 2026-10-02 — Streaming Markdown
 
 - New `StreamingMarkdown` component: renders replies as Markdown while they stream. Finished blocks are frozen; only the block being written is re-parsed and patched, so visible text is never rebuilt.
