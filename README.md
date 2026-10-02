@@ -22,7 +22,7 @@ That works for a demo, then breaks down on real replies:
 | Fade-in effect | Hard to limit to new text | Only newly arrived characters fade in |
 | Untrusted model output | Depends on the renderer (`marked` + `innerHTML` needs a sanitizer) | No `innerHTML` at all: raw HTML shows as text, only `http(s)`/`mailto` links |
 
-Zero runtime dependencies, about 8 kB gzipped (React is a peer dependency).
+Zero runtime dependencies, 7.0 kB gzipped (React is a peer dependency). See [benchmarks](#benchmarks) for size and speed against other libraries.
 
 ## How it compares
 
@@ -31,7 +31,8 @@ Stream Readable is not the first library for this. Pick the one that fits:
 | | Stream Readable | [Vercel Streamdown](https://github.com/vercel/streamdown) | [lobehub/streamdown](https://github.com/lobehub/streamdown) |
 |---|---|---|---|
 | What it is | Small streaming Markdown renderer | Full drop-in replacement for react-markdown | Headless streaming Markdown engine |
-| Built on | Its own parser, no runtime dependencies | remark/rehype, Shiki, KaTeX, Mermaid | react-markdown, marked, KaTeX, remend |
+| Built on | Its own parser, no runtime dependencies | remark/rehype; Shiki, KaTeX, Mermaid as plugins | react-markdown, marked, KaTeX, remend |
+| Size (gzipped) | 7.0 kB | 164.0 kB core | 147.8 kB |
 | Unfinished syntax | Rendered optimistically | Repaired (remend) | Repaired (remend) |
 | Finished blocks | Frozen, never touched again | Memoized | Cached; only the tail re-renders |
 | Fade-in | Per character, optional | Optional (`animated`) | Character or word, cadence presets |
@@ -42,6 +43,37 @@ Other options: [llm-ui](https://github.com/llm-ui-kit/llm-ui) hides broken Markd
 
 **When to use which:** need syntax highlighting, math or Mermaid, or a react-markdown replacement? Use Vercel Streamdown. Want word-by-word cadence presets? Look at lobehub/streamdown. Want custom components inside replies? Try llm-ui. Want the smallest option with no dependencies, no `innerHTML`, and built-in timing measurement? Use Stream Readable.
 
+## Benchmarks
+
+Measured, not estimated. Scripts are in [`bench/`](bench) (`cd bench && npm install && npm run size && npm run speed`).
+
+**Bundle size** (what each library adds to an app that already ships React; production build, minified):
+
+| Library | Minified | Gzipped |
+|---|--:|--:|
+| **stream-readable** (`StreamingMarkdown` + `createTextStream`) | **20.3 kB** | **7.0 kB** |
+| react-markdown + remark-gfm | 206.2 kB | 51.4 kB |
+| @lobehub/streamdown 1.4.0 | 602.6 kB | 147.8 kB |
+| streamdown (Vercel) 2.7.0, core without plugins | 619.5 kB | 164.0 kB |
+
+Plus 0.9 kB gzipped for `style.css`.
+
+**Rendering cost** while streaming a 10,201-character reply with nested lists, code blocks, tables and quotes, one 24-character chunk per animation frame (426 chunks). Production React build, headless Chromium 141, median of 3 runs. "Main-thread time" is Chrome's own `TaskDuration` counter (script, style, layout, paint) from the first chunk until the output stops changing.
+
+| Renderer | Main-thread time, whole reply | Slowest update | Avg update, last 20 chunks |
+|---|--:|--:|--:|
+| **stream-readable**, `animate={false}` | **1,100 ms** | **3.3 ms** | **0.9 ms** |
+| streamdown (Vercel) | 2,031 ms | 15.3 ms | 2.5 ms |
+| @lobehub/streamdown (`realtime`) | 2,609 ms | 14.4 ms | 2.6 ms |
+| **stream-readable**, fade-in on (default) | 2,941 ms | 7.3 ms | 2.0 ms |
+| react-markdown + remark-gfm, re-rendered each chunk | 6,384 ms | 38.7 ms | 24.3 ms |
+
+Why the update cost stays flat: the reply is split into blocks, blocks that can no longer change are frozen, and only the block being written is re-parsed. The new block tree is diffed against the previous one and patched with DOM APIs (`createElement`, `textContent`, `setAttribute`), so already-visible nodes are reused rather than rebuilt.
+
+The fade-in is not free: animating each new character costs roughly 1.8 s of main-thread time over this reply, about 4 ms per frame. The work stays spread out (no update above 7.3 ms), but on low-end devices or very long replies, consider `animate={false}`.
+
+**Timing measurement** (`durations`, first-commit and first-visible marks) is opt-in. Leave out the `session` prop and no probe runs. If you don't import `durations`, it is tree-shaken. The visibility probe is 0.6 kB gzipped and runs for a few frames once per reply.
+
 ## Quick start
 
 ```sh
@@ -49,18 +81,14 @@ npm i stream-readable
 ```
 
 ```tsx
-import {useState} from 'react';
-import {createTextStream, StreamingMarkdown, type StreamSession} from 'stream-readable';
+import {createTextStream, StreamingMarkdown} from 'stream-readable';
 import 'stream-readable/style.css';
 
 const stream = createTextStream();
 
 export function Answer() {
-  const [session, setSession] = useState<StreamSession | null>(null);
-
   async function ask(question: string) {
     const s = stream.begin();          // starts a new reply; late chunks from an old one are ignored
-    setSession(s);
     s.requestStarted();
     try {
       const response = await fetch('/api/chat', {method: 'POST', body: JSON.stringify({question})});
@@ -78,7 +106,7 @@ export function Answer() {
 
   return <>
     <button onClick={() => ask('Explain streaming')}>Ask</button>
-    <StreamingMarkdown stream={stream} session={session} />
+    <StreamingMarkdown stream={stream} />
   </>;
 }
 ```
@@ -117,7 +145,7 @@ Creates a controller you can render with any of the components. Pass `{batch: fa
 | `session.append(delta)` | Add new text. Deltas, not the cumulative text. |
 | `session.complete()` / `session.interrupt()` / `session.fail(error)` | End the reply. The text stays. |
 
-### `<StreamingMarkdown stream session animate? label? className? />`
+### `<StreamingMarkdown stream session? animate? label? className? />`
 
 Renders the reply as Markdown. `animate` defaults to `true`. Default styles are in `stream-readable/style.css` and inherit your font and colors; code blocks get a `language-*` class.
 

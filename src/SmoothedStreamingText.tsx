@@ -5,7 +5,8 @@ import {createReveal,graphemes} from './reveal.js';
 
 /** Append each new grapheme in order; previously displayed text is never animated again. */
 export function SmoothedStreamingText({stream,session,label='Smoothed streaming reply',className=''}: {
-  stream:TextStream; session:StreamSession|null; label?:string; className?:string;
+  stream:TextStream; /** Pass the session only if you want timing marks (first commit, first visible). */
+  session?:StreamSession|null; label?:string; className?:string;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const rendered = useRef<{stream:TextStream|null;id:number;text:string}>({stream:null,id:0,text:''});

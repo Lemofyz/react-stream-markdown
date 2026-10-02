@@ -105,3 +105,13 @@ describe('StreamingMarkdown remounting',()=>{
    expect(animate.mock.calls.length-calls).toBe(2);
  });
 });
+
+describe('StreamingMarkdown without a session',()=>{
+ it('renders without recording timing marks',()=>{
+   const stream=createTextStream({batch:false});const session=stream.begin();session.requestStarted();
+   render(<StreamingMarkdown stream={stream}/>);
+   session.append('**hi**');
+   expect(screen.getByRole('region').querySelector('strong')?.textContent).toBe('hi');
+   expect(stream.getSnapshot().marks.firstCommitAt).toBeNull();
+ });
+});

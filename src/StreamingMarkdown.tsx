@@ -14,7 +14,8 @@ const fresh = (stream: TextStream|null = null,id = 0): Rendered => ({stream,id,t
  * whole reply. New characters fade in left to right (optional); visible text never replays.
  */
 export function StreamingMarkdown({stream,session,label='Streaming reply',className='',animate=true}: {
-  stream:TextStream; session:StreamSession|null; label?:string; className?:string;
+  stream:TextStream; /** Pass the session only if you want timing marks (first commit, first visible). */
+  session?:StreamSession|null; label?:string; className?:string;
   /** Fade in newly arrived characters. Reduced-motion users never see the effect. */
   animate?:boolean;
 }) {

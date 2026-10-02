@@ -8,7 +8,8 @@ export function useStreamingText(stream: TextStream) {
 
 /** Plain text by design: one stable text node, escaped by React, no per-token remounts. */
 export function StreamingText({stream,session,label = 'Streaming reply',className = ''}: {
-  stream: TextStream; session: StreamSession | null; label?: string; className?: string;
+  stream: TextStream; /** Pass the session only if you want timing marks (first commit, first visible). */
+  session?: StreamSession | null; label?: string; className?: string;
 }) {
   const state = useStreamingText(stream);
   const element = useRef<HTMLDivElement>(null);
