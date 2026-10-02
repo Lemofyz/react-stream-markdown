@@ -6,6 +6,17 @@
 
 A long model answer can take 10 seconds or more to generate. If your UI waits for the complete response, people stare at a spinner the whole time, then get hit with a wall of text. Stream Readable renders the reply as Markdown **chunk by chunk as it arrives**, so people start reading with the first token while the rest is still being generated.
 
+## Benchmarks
+
+| | **stream-readable** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
+|---|--:|--:|--:|--:|
+| Bundle size (gzipped) | **7.0 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
+| Direct runtime dependencies | **0** | 15 | 12 | 17 |
+| Main-thread time, 10k-character reply | **1.1 s** (2.9 s with fade-in) | 2.0 s | 2.6 s | 6.4 s |
+| Slowest single update | **3.3 ms** (7.3 ms with fade-in) | 15.3 ms | 14.4 ms | 38.7 ms |
+
+<sub>Headless Chromium 141, production builds, median of 3 runs. The reply has nested lists, code blocks and tables and arrives as one 24-character chunk per frame. Reproduce with the scripts in [`bench/`](bench); method and caveats are under [Benchmark details](#benchmark-details).</sub>
+
 ![Left: waiting for the full reply. Right: Stream Readable renders Markdown as it streams in.](docs/media/demo-en.gif)
 
 *Same synthetic chunk timeline in both panels. Left waits for the last chunk; right shows each chunk immediately.*
@@ -22,7 +33,7 @@ That works for a demo, then breaks down on real replies:
 | Fade-in effect | Hard to limit to new text | Only newly arrived characters fade in |
 | Untrusted model output | Depends on the renderer (`marked` + `innerHTML` needs a sanitizer) | No `innerHTML` at all: raw HTML shows as text, only `http(s)`/`mailto` links |
 
-Zero runtime dependencies, 7.0 kB gzipped (React is a peer dependency). See [benchmarks](#benchmarks) for size and speed against other libraries.
+Zero runtime dependencies, 7.0 kB gzipped (React is a peer dependency). See [benchmarks](#benchmarks).
 
 ## How it compares
 
@@ -43,7 +54,7 @@ Other options: [llm-ui](https://github.com/llm-ui-kit/llm-ui) hides broken Markd
 
 **When to use which:** need syntax highlighting, math or Mermaid, or a react-markdown replacement? Use Vercel Streamdown. Want word-by-word cadence presets? Look at lobehub/streamdown. Want custom components inside replies? Try llm-ui. Want the smallest option with no dependencies, no `innerHTML`, and built-in timing measurement? Use Stream Readable.
 
-## Benchmarks
+## Benchmark details
 
 Measured, not estimated. Scripts are in [`bench/`](bench) (`cd bench && npm install && npm run size && npm run speed`).
 

@@ -6,6 +6,17 @@
 
 一个长回答，模型往往要生成 10 秒甚至更久。如果界面等完整结果出来再显示，用户就要一直盯着加载动画，最后再一下子面对一大段文字。Stream Readable 在**每个片段到达时**就把它渲染成 Markdown，用户收到第一个 token 就能开始读，后面的内容还在继续生成。
 
+## 性能基准测试
+
+| | **stream-readable** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
+|---|--:|--:|--:|--:|
+| 打包体积（gzip） | **7.0 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
+| 直接运行时依赖 | **0** | 15 | 12 | 17 |
+| 渲染 1 万字回答的主线程耗时 | **1.1 秒**（开淡入 2.9 秒） | 2.0 秒 | 2.6 秒 | 6.4 秒 |
+| 单次更新最慢耗时 | **3.3 ms**（开淡入 7.3 ms） | 15.3 ms | 14.4 ms | 38.7 ms |
+
+<sub>无头 Chromium 141，生产构建，取 3 次的中位数。测试回答包含嵌套列表、代码块和表格，每帧到达 24 个字符。用 [`bench/`](bench) 里的脚本可以复现，测试方法和注意事项见[实测数据详情](#实测数据详情)。</sub>
+
 ![左：等完整回复再显示。右：Stream Readable 边接收边渲染 Markdown。](docs/media/demo-zh.gif)
 
 *两个面板回放的是同一条模拟片段时间线。左边等最后一个片段，右边每个片段到达就显示。*
@@ -22,7 +33,7 @@
 | 淡入效果 | 很难只作用于新文字 | 只有新到的字符会淡入 |
 | 不可信的模型输出 | 取决于渲染器（`marked` + `innerHTML` 需要额外清洗） | 完全不用 `innerHTML`：原始 HTML 当文本显示，只允许 `http(s)`/`mailto` 链接 |
 
-零运行时依赖，gzip 后 7.0 kB（React 为 peer 依赖）。和其他库的体积、速度对比见[实测数据](#实测数据)。
+零运行时依赖，gzip 后 7.0 kB（React 为 peer 依赖）。和其他库的对比见[性能基准测试](#性能基准测试)。
 
 ## 和同类项目对比
 
@@ -43,7 +54,7 @@
 
 **怎么选：**需要代码高亮、数学公式、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 Stream Readable。
 
-## 实测数据
+## 实测数据详情
 
 以下数字都是实际测出来的，不是估算。测试脚本在 [`bench/`](bench) 目录（`cd bench && npm install && npm run size && npm run speed`）。
 
