@@ -1,6 +1,6 @@
 # Original / Smoothed verification — 0.2.0
 
-2026-09-27, Mac, Node 24.20.0, Chrome 152.0.0.0, foreground viewport 1598×793. This update and its tests/documentation are AI-assisted. Initial-release evidence remains in [verification.md](verification.md).
+2026-09-27, Mac, Node 24.20.0, Chrome 152.0.0.0, foreground viewport 1598×793. Initial-release evidence remains in [verification.md](verification.md).
 
 ## Implemented behavior
 
