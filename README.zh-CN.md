@@ -24,6 +24,24 @@
 
 零运行时依赖，gzip 后约 8 kB（React 为 peer 依赖）。
 
+## 和同类项目对比
+
+这类库不止这一个，按需求选：
+
+| | Stream Readable | [Vercel Streamdown](https://github.com/vercel/streamdown) | [lobehub/streamdown](https://github.com/lobehub/streamdown) |
+|---|---|---|---|
+| 定位 | 小巧的流式 Markdown 渲染器 | 可以直接替换 react-markdown 的完整方案 | 无样式的流式 Markdown 引擎 |
+| 依赖 | 自带解析器，零运行时依赖 | remark/rehype、Shiki、KaTeX、Mermaid | react-markdown、marked、KaTeX、remend |
+| 没写完的语法 | 提前按最终样式渲染 | 自动补全（remend） | 自动补全（remend） |
+| 写完的块 | 冻结，不再改动 | 缓存（memoized） | 缓存，只重新渲染末尾 |
+| 淡入 | 按字符，可关闭 | 可选（`animated`） | 按字符或按词，有节奏预设 |
+| 代码高亮、数学公式、图表 | 不支持 | 支持 | 支持数学公式 |
+| 不可信的 HTML | 从不解析，DOM 不用 `innerHTML` 构建 | 加固处理（rehype-harden） | 由 react-markdown 处理 |
+
+其他选择：[llm-ui](https://github.com/llm-ui-kit/llm-ui) 会隐藏写坏的 Markdown、按帧率平滑输出，还能在回答里渲染自定义组件；[FlowToken](https://github.com/Ephibbs/flowtoken) 专注文字动画（淡入、模糊、打字机等）。
+
+**怎么选：**需要代码高亮、数学公式、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 Stream Readable。
+
 ## 快速开始
 
 ```sh

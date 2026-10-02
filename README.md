@@ -24,6 +24,24 @@ That works for a demo, then breaks down on real replies:
 
 Zero runtime dependencies, about 8 kB gzipped (React is a peer dependency).
 
+## How it compares
+
+Stream Readable is not the first library for this. Pick the one that fits:
+
+| | Stream Readable | [Vercel Streamdown](https://github.com/vercel/streamdown) | [lobehub/streamdown](https://github.com/lobehub/streamdown) |
+|---|---|---|---|
+| What it is | Small streaming Markdown renderer | Full drop-in replacement for react-markdown | Headless streaming Markdown engine |
+| Built on | Its own parser, no runtime dependencies | remark/rehype, Shiki, KaTeX, Mermaid | react-markdown, marked, KaTeX, remend |
+| Unfinished syntax | Rendered optimistically | Repaired (remend) | Repaired (remend) |
+| Finished blocks | Frozen, never touched again | Memoized | Cached; only the tail re-renders |
+| Fade-in | Per character, optional | Optional (`animated`) | Character or word, cadence presets |
+| Code highlighting, math, diagrams | No | Yes | Math |
+| Untrusted HTML | Never parsed; DOM built without `innerHTML` | Hardened (rehype-harden) | Via react-markdown |
+
+Other options: [llm-ui](https://github.com/llm-ui-kit/llm-ui) hides broken Markdown, throttles output to the frame rate and lets you render custom components inside replies. [FlowToken](https://github.com/Ephibbs/flowtoken) focuses on text animations (fade, blur, typewriter and more).
+
+**When to use which:** need syntax highlighting, math or Mermaid, or a react-markdown replacement? Use Vercel Streamdown. Want word-by-word cadence presets? Look at lobehub/streamdown. Want custom components inside replies? Try llm-ui. Want the smallest option with no dependencies, no `innerHTML`, and built-in timing measurement? Use Stream Readable.
+
 ## Quick start
 
 ```sh
