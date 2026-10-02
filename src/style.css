@@ -1,7 +1,30 @@
 .stream-readable { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
 /* Letter reveal is driven by Web Animations; unanimated text stays fully opaque. */
 .stream-readable-append { opacity: 1; }
+
+/* StreamingMarkdown: neutral defaults that inherit your font and colors. Override freely. */
+.stream-readable-md { line-height: 1.7; overflow-wrap: anywhere; }
+.stream-readable-md > :first-child { margin-top: 0; }
+.stream-readable-md > :last-child { margin-bottom: 0; }
+.stream-readable-md p, .stream-readable-md ul, .stream-readable-md ol, .stream-readable-md blockquote, .stream-readable-md pre, .stream-readable-md .sr-table { margin: 0 0 1em; }
+.stream-readable-md h1, .stream-readable-md h2, .stream-readable-md h3, .stream-readable-md h4, .stream-readable-md h5, .stream-readable-md h6 { margin: 1.2em 0 .5em; line-height: 1.3; }
+.stream-readable-md ul, .stream-readable-md ol { padding-left: 1.5em; }
+.stream-readable-md li > ul, .stream-readable-md li > ol { margin: .25em 0; }
+.stream-readable-md li.sr-task { list-style: none; margin-left: -1.3em; }
+.stream-readable-md li.sr-task > input { margin: 0 .5em 0 0; vertical-align: -.1em; }
+.stream-readable-md blockquote { padding-left: 1em; border-left: 3px solid color-mix(in srgb, currentColor 25%, transparent); opacity: .85; }
+.stream-readable-md code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; padding: .1em .3em; border-radius: 4px; background: color-mix(in srgb, currentColor 9%, transparent); }
+.stream-readable-md pre { padding: .9em 1em; overflow-x: auto; border-radius: 8px; background: color-mix(in srgb, currentColor 7%, transparent); line-height: 1.5; }
+.stream-readable-md pre code { padding: 0; background: none; font-size: .85em; white-space: pre; }
+.stream-readable-md hr { border: 0; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); margin: 1.5em 0; }
+.stream-readable-md .sr-table { overflow-x: auto; }
+.stream-readable-md table { border-collapse: collapse; }
+.stream-readable-md th, .stream-readable-md td { padding: .4em .8em; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); text-align: left; }
+.stream-readable-md [data-align=center] { text-align: center; }
+.stream-readable-md [data-align=right] { text-align: right; }
+.stream-readable-md a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
 /* WAAPI decoration is also disabled/cancelled by the reduced-motion listener. */
 @media (prefers-reduced-motion: reduce) {
-  .stream-readable, .stream-readable-append { animation: none !important; transition: none !important; scroll-behavior: auto; opacity: 1; }
+  .stream-readable, .stream-readable-md, .stream-readable-append { animation: none !important; transition: none !important; scroll-behavior: auto; opacity: 1; }
 }

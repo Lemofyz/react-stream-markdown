@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-10-02 — Streaming Markdown
+
+- New `StreamingMarkdown` component: renders replies as Markdown while they stream. Finished blocks are frozen; only the block being written is re-parsed and patched, so visible text is never rebuilt.
+- Unfinished syntax renders optimistically while streaming (`**bold`, inline code, open code fences, table headers without a separator row).
+- Optional fade-in applies only to newly arrived characters, shared with `SmoothedStreamingText`; animated spans merge back into plain text nodes when they finish.
+- DOM is built without `innerHTML`; raw HTML renders as text, and only `http(s)`, `mailto` and relative links are linked. Images render as links.
+- New static landing demo (`index.html`) comparing "wait for the full reply" with streaming, in English and Chinese. The dev-server latency lab moved to `lab.html`.
+- Package is ready to publish to npm (`npm i stream-readable`). README rewritten; measurement details moved to `docs/measurement.md`.
+- Added a GitHub Pages workflow for the demo.
+
 ## 2026-09-27 — Left-to-right letter reveal
 
 - New text enters the DOM immediately and reveals from left to right, grapheme by grapheme, with opacity 0 → 1 and a slight horizontal motion. Existing text never replays its animation.

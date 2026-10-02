@@ -1,19 +1,32 @@
 {
   "name": "stream-readable",
-  "version": "0.2.0",
-  "private": true,
-  "type": "module",
-  "description": "Measure and display streaming text without sentence buffering.",
-  "license": "MIT",
-  "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
-    "build:lib": "tsc -p tsconfig.lib.json",
-    "test": "vitest run",
-    "test:browser": "playwright test",
-    "benchmark": "node scripts/benchmark.mjs",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+  "version": "0.3.0",
+  "description": "Render streaming AI replies as Markdown while they are still being written. React, zero dependencies.",
+  "keywords": [
+    "streaming",
+    "markdown",
+    "llm",
+    "ai",
+    "chat",
+    "react",
+    "sse",
+    "openai",
+    "claude",
+    "typewriter"
+  ],
+  "homepage": "https://lemofyz.github.io/stream-readable/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lemofyz/stream-readable.git"
   },
+  "bugs": "https://github.com/Lemofyz/stream-readable/issues",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
       "types": "./lib/index.d.ts",
@@ -27,6 +40,16 @@
     "LICENSE",
     "README.md"
   ],
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "build:lib": "tsc -p tsconfig.lib.json",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "benchmark": "node scripts/benchmark.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "prepublishOnly": "npm test && npm run build:lib"
+  },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"

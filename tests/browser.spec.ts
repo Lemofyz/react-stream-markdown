@@ -10,7 +10,7 @@ for(const reducedMotion of ['no-preference','reduce'] as const){
  });
 }
 test('demo compares identical streams and works on mobile',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.goto('/');await page.getByRole('button',{name:'Run stream',exact:true}).click();
+ await page.setViewportSize({width:390,height:844});await page.goto('/lab.html');await page.getByRole('button',{name:'Run stream',exact:true}).click();
  await expect(page.getByTestId('frame').getByRole('status')).toHaveText('complete');
  const states=await Promise.all(['frame','smoothed','event','sentence'].map(async id=>JSON.parse((await page.getByTestId(`${id}-json`).textContent())!)));
  expect(states[0].text).toBe(states[1].text);expect(states[0].text).toBe(states[2].text);expect(states[0].text).toBe(states[3].text);expect(states[0].marks.firstTextAt).toBe(states[1].marks.firstTextAt);
@@ -19,7 +19,7 @@ test('demo compares identical streams and works on mobile',async({page})=>{
 });
 
 test('slow same-stream comparison reveals new letters before completion',async({page})=>{
- await page.goto('/?playback=slow');await page.getByRole('button',{name:'Run stream',exact:true}).click();
+ await page.goto('/lab.html?playback=slow');await page.getByRole('button',{name:'Run stream',exact:true}).click();
  const original=page.getByRole('region',{name:'Original reply',exact:true});const smoothed=page.getByRole('region',{name:'Letter reveal reply',exact:true});
  await expect(original).toHaveText('You can start reading');await expect(smoothed).toHaveText('You can start reading');
  expect(await smoothed.locator('span').count()).toBeGreaterThan(1);
@@ -27,4 +27,15 @@ test('slow same-stream comparison reveals new letters before completion',async({
  await page.getByRole('button',{name:'Stop',exact:true}).click();
  await expect(page.getByTestId('smoothed').getByRole('status')).toHaveText('interrupted');
  expect(await smoothed.locator('span').evaluateAll(els=>els.every(el=>getComputedStyle(el).opacity==='1'&&el.getAnimations().length===0))).toBe(true);
+});
+
+test('landing demo streams Markdown long before the full reply',async({page})=>{
+ await page.goto('/?lang=en&speed=fast');
+ const live=page.getByTestId('live').getByRole('region');
+ await expect(live.locator('h2')).toHaveText('Streaming beats waiting',{timeout:3000});
+ await expect(page.getByTestId('wait').getByRole('region')).toHaveText('');
+ await expect(page.getByRole('status')).toContainText('Reader started',{timeout:15000});
+ await expect(live.locator('table td').first()).toHaveText('First words on screen');
+ await expect(live.locator('pre code')).toContainText('session.append(chunk);');
+ expect(await live.innerText()).not.toContain('## ');
 });
