@@ -57,7 +57,7 @@ function Reply({stream,session,label,animate,waiting}: {stream:TextStream;sessio
 
 function App() {
   const params = new URLSearchParams(location.search);
-  const [lang,setLang] = useState<Lang>(() => params.get('lang') === 'zh' || (params.get('lang') !== 'en' && navigator.language.startsWith('zh')) ? 'zh' : 'en');
+  const [lang,setLang] = useState<Lang>(() => params.get('lang') === 'zh' ? 'zh' : 'en');
   const [speed,setSpeed] = useState<Speed>(() => (params.get('speed') as Speed) in speeds ? params.get('speed') as Speed : 'typical');
   const [animate,setAnimate] = useState(params.get('fade') !== '0');
   const [streams] = useState(() => ({wait:createTextStream(),live:createTextStream()}));
