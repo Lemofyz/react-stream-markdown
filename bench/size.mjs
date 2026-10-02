@@ -2,7 +2,7 @@
 import {build} from 'vite';
 import {gzipSync} from 'node:zlib';
 const entries = {
-  'stream-readable (StreamingMarkdown)': 'entries/stream-readable.js',
+  'react-stream-markdown (StreamingMarkdown)': 'entries/react-stream-markdown.js',
   'streamdown (Vercel, core only)': 'entries/vercel-streamdown.js',
   '@lobehub/streamdown': 'entries/lobehub-streamdown.js',
   'react-markdown + remark-gfm': 'entries/react-markdown.js',

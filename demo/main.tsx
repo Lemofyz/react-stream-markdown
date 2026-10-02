@@ -8,9 +8,9 @@ import './landing.css';
 const text = {
   en: {
     tagline: 'Show AI replies while they are still being written.',
-    lead: 'Long answers take seconds to generate. Stream Readable renders Markdown as each chunk arrives, so people start reading with the first token instead of staring at a spinner until the last one.',
+    lead: 'Long answers take seconds to generate. react-stream-markdown renders Markdown as each chunk arrives, so people start reading with the first token instead of staring at a spinner until the last one.',
     replay: 'Replay', speed: 'Model speed', slow: 'Slow', typical: 'Typical', fast: 'Fast', fade: 'Fade-in',
-    waitTitle: 'Wait for the full reply', liveTitle: 'Stream Readable',
+    waitTitle: 'Wait for the full reply', liveTitle: 'react-stream-markdown',
     waitNote: 'Generating the complete answer…', first: 'First words', done: 'Complete',
     headStart: (s: string) => `Reader started ${s} earlier`, question: 'Question',
     synthetic: 'Both panels replay the same synthetic chunk timeline in your browser. No model is called.',
@@ -18,9 +18,9 @@ const text = {
   },
   zh: {
     tagline: '边生成，边阅读。',
-    lead: '长回答往往要生成好几秒。Stream Readable 在每个片段到达时就把 Markdown 渲染出来，用户收到第一个 token 就能开始读，而不是盯着加载动画等到最后一个。',
+    lead: '长回答往往要生成好几秒。react-stream-markdown 在每个片段到达时就把 Markdown 渲染出来，用户收到第一个 token 就能开始读，而不是盯着加载动画等到最后一个。',
     replay: '重新播放', speed: '模型速度', slow: '慢', typical: '一般', fast: '快', fade: '淡入效果',
-    waitTitle: '等完整回复再显示', liveTitle: 'Stream Readable',
+    waitTitle: '等完整回复再显示', liveTitle: 'react-stream-markdown',
     waitNote: '正在生成完整回答…', first: '首字出现', done: '全部完成',
     headStart: (s: string) => `用户提前 ${s} 开始阅读`, question: '问题',
     synthetic: '两个面板在浏览器里回放同一条模拟片段时间线，没有调用任何模型。',
@@ -104,16 +104,16 @@ function App() {
   const headStart = clock.done !== null && clock.first !== null ? clock.done - clock.first : null;
   return <main>
     <header>
-      <div className="brand"><span className="dot"/>stream-readable</div>
+      <div className="brand"><span className="dot"/>react-stream-markdown</div>
       <nav>
         <button className="link" onClick={() => { const next = lang === 'en' ? 'zh' : 'en'; setLang(next); run(next); }}>{t.other}</button>
-        <a href="https://github.com/Lemofyz/stream-readable">GitHub</a>
+        <a href="https://github.com/Lemofyz/react-stream-markdown">GitHub</a>
       </nav>
     </header>
     <section className="hero">
       <h1>{t.tagline}</h1>
       <p>{t.lead}</p>
-      <pre className="install"><code>npm i stream-readable</code></pre>
+      <pre className="install"><code>npm i react-stream-markdown</code></pre>
     </section>
     <form className="controls" onSubmit={e => { e.preventDefault(); run(); }}>
       <button type="submit">↻ {t.replay}</button>
@@ -138,7 +138,7 @@ function App() {
         <Reply stream={streams.live} session={sessions.live} label={t.liveTitle} animate={animate}/>
       </section>
     </div>
-    <footer>{t.synthetic} <a href="https://github.com/Lemofyz/stream-readable#readme">README</a></footer>
+    <footer>{t.synthetic} <a href="https://github.com/Lemofyz/react-stream-markdown#readme">README</a></footer>
   </main>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);

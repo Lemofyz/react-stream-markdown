@@ -34,7 +34,7 @@ dl div{display:grid;gap:2px;text-align:right}
 dt{color:var(--muted)}
 dd{margin:0;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;min-width:48px}
 .reply{height:470px;overflow:auto;padding:18px 20px;font-size:15.5px;position:relative}
-.reply .stream-readable-md h2{font-size:21px;margin-top:0}
+.reply .rsm-markdown h2{font-size:21px;margin-top:0}
 .waiting{display:flex;flex-wrap:wrap;align-items:center;gap:10px;color:var(--muted);font-size:14px}
 .spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--muted);animation:spin .8s linear infinite}
 .skeleton{flex-basis:100%;display:grid;gap:10px;margin-top:10px}

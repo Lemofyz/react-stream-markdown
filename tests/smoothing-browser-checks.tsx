@@ -7,8 +7,8 @@ export async function runSmoothingChecks(root:Root,fixture:HTMLElement):Promise<
  const results:BrowserCheck[]=[];
  const assert=(value:unknown,message:string)=>{if(!value)throw Error(message);};
  const delay=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
- const opaque=()=>[...fixture.querySelectorAll('.stream-readable-append')].every(s=>getComputedStyle(s).opacity==='1'&&s.getAnimations().length===0);
- const mount=()=>{const stream=createTextStream({batch:false});const session=stream.begin();session.requestStarted();flushSync(()=>root.render(<SmoothedStreamingText stream={stream} session={session}/>));return {stream,session,region:fixture.querySelector('.stream-readable-smoothed')!};};
+ const opaque=()=>[...fixture.querySelectorAll('.rsm-append')].every(s=>getComputedStyle(s).opacity==='1'&&s.getAnimations().length===0);
+ const mount=()=>{const stream=createTextStream({batch:false});const session=stream.begin();session.requestStarted();flushSync(()=>root.render(<SmoothedStreamingText stream={stream} session={session}/>));return {stream,session,region:fixture.querySelector('.rsm-smoothed')!};};
  const check=async(name:string,fn:()=>Promise<unknown>)=>{try{results.push({name,passed:true,detail:await fn()});}catch(e){results.push({name,passed:false,detail:String(e)});}};
  await check('first letters enter the DOM synchronously and reveal in order',async()=>{
   const f=mount();f.session.append('ABC');assert(f.region.textContent==='ABC','deferred DOM');

@@ -20,5 +20,5 @@ export function StreamingText({stream,session,label = 'Streaming reply',classNam
     if (stream.getSnapshot().marks.firstVisibleAt !== null) return;
     return observeFirstVisible(element.current,session);
   },[state.id,hasText,session,stream]);
-  return <div ref={element} className={`stream-readable ${className}`} role="region" aria-label={label}>{state.text}</div>;
+  return <div ref={element} className={`rsm-text ${className}`} role="region" aria-label={label}>{state.text}</div>;
 }

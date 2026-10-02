@@ -26,7 +26,7 @@ function setup(animateText=true){
  return {stream,session,view,region:screen.getByRole('region')};
 }
 /** Structure without the text wrapper spans used for reveals. */
-const shape=(root:Element):string=>Array.from(root.childNodes).map(node=>node.nodeType===3?node.textContent:(node as Element).tagName==='SPAN'&&!(node as Element).className?shape(node as Element):(node as Element).tagName==='SPAN'&&(node as Element).className==='stream-readable-append'?node.textContent:`<${(node as Element).tagName.toLowerCase()}>${shape(node as Element)}</>`).join('');
+const shape=(root:Element):string=>Array.from(root.childNodes).map(node=>node.nodeType===3?node.textContent:(node as Element).tagName==='SPAN'&&!(node as Element).className?shape(node as Element):(node as Element).tagName==='SPAN'&&(node as Element).className==='rsm-append'?node.textContent:`<${(node as Element).tagName.toLowerCase()}>${shape(node as Element)}</>`).join('');
 
 describe('StreamingMarkdown',()=>{
  it.each([1,3,7,1000])('streams in %i-character chunks to the same result as one-shot rendering',size=>{
@@ -64,7 +64,7 @@ describe('StreamingMarkdown',()=>{
      animations.forEach(a=>a.finish());
      seen=now;
    }
-   expect(f.region.querySelectorAll('.stream-readable-append')).toHaveLength(0);
+   expect(f.region.querySelectorAll('.rsm-append')).toHaveLength(0);
  });
  it('renders HTML and unsafe links as inert text',()=>{
    const f=setup();
@@ -85,7 +85,7 @@ describe('StreamingMarkdown',()=>{
  });
  it('creates no per-character spans when animation is off',()=>{
    const f=setup(false);f.session.append('Hello **world**');
-   expect(animate).not.toHaveBeenCalled();expect(f.region.querySelector('.stream-readable-append')).toBeNull();
+   expect(animate).not.toHaveBeenCalled();expect(f.region.querySelector('.rsm-append')).toBeNull();
  });
  it('bounds animation work in a burst',()=>{
    const f=setup();for(let i=0;i<1000;i++)f.session.append('x ');
