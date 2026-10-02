@@ -32,4 +32,4 @@ const mockStream = (): Plugin => ({
     res.on('close',()=>timers.forEach(clearTimeout));
   }); },
 });
-export default defineConfig({optimizeDeps:{include:['react','react-dom','react-dom/client','react/jsx-runtime','react/jsx-dev-runtime']},plugins:[mockStream()],server:{host:'127.0.0.1',port:4318,strictPort:true},test:{environment:'jsdom',include:['tests/**/*.test.{ts,tsx}']}});
+export default defineConfig({base:'./',optimizeDeps:{include:['react','react-dom','react-dom/client','react/jsx-runtime','react/jsx-dev-runtime']},plugins:[mockStream()],server:{host:'127.0.0.1',port:4318,strictPort:true},test:{environment:'jsdom',include:['tests/**/*.test.{ts,tsx}']}});
