@@ -33,7 +33,8 @@ def style_ax(ax):
     ax.set_axisbelow(True)
 
 
-def plot_equity(curves: dict[str, pd.Series], path: Path, title: str):
+def plot_equity(curves: dict[str, pd.Series], path: Path, title: str,
+                legend_loc: str = "upper left"):
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(11, 6.5), sharex=True,
                                  gridspec_kw={"height_ratios": [3, 1]})
     fig.patch.set_facecolor(SURFACE)
@@ -48,7 +49,7 @@ def plot_equity(curves: dict[str, pd.Series], path: Path, title: str):
     a1.set_yscale("log")
     a1.set_ylabel("USDT (log)", color=INK2)
     a1.set_title(title, color=INK, fontsize=11, loc="left")
-    a1.legend(frameon=False, labelcolor=INK2, loc="upper left", fontsize=9)
+    a1.legend(frameon=False, labelcolor=INK2, loc=legend_loc, fontsize=9)
     a2.set_ylabel("Drawdown %", color=INK2)
     fig.tight_layout()
     fig.savefig(path, dpi=120, facecolor=SURFACE)
@@ -209,4 +210,23 @@ def plot_short_trade(panel: dict[str, pd.DataFrame], tr: pd.Series, path: Path, 
                        fontsize=7)
     fig.tight_layout()
     fig.savefig(path, dpi=110, facecolor=SURFACE)
+    plt.close(fig)
+
+
+def plot_hist(samples: np.ndarray, path: Path, title: str, xlabel: str,
+              marks: dict[str, float] | None = None):
+    fig, ax = plt.subplots(figsize=(9, 3.8))
+    fig.patch.set_facecolor(SURFACE)
+    style_ax(ax)
+    ax.hist(samples, bins=40, color=SERIES[0], alpha=0.85, edgecolor=SURFACE, lw=1)
+    top = ax.get_ylim()[1]
+    for (lab, x), y, ls in zip((marks or {}).items(), (0.92, 0.80, 0.68), ("--", "-", ":")):
+        ax.axvline(x, color=INK, lw=1.4, ls=ls)
+        ax.annotate(f"{lab} {x:,.0f}", (x, top * y), xytext=(4, 0), textcoords="offset points",
+                    fontsize=8, color=INK, bbox=dict(boxstyle="square,pad=0.15", fc=SURFACE, ec="none"))
+    ax.set_xlabel(xlabel, color=INK2, fontsize=9)
+    ax.set_ylabel("simulations", color=INK2, fontsize=9)
+    ax.set_title(title, color=INK, fontsize=10, loc="left")
+    fig.tight_layout()
+    fig.savefig(path, dpi=120, facecolor=SURFACE)
     plt.close(fig)

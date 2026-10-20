@@ -58,6 +58,9 @@ run_backtest.py      所有实验 + 报告
 download_futures.py  永续合约日线 / 4h / 资金费率下载(做空实验)
 cmb/short_engine.py  做空实验:参数、暴涨事件、逐日(+4h)撮合
 run_short.py         做空实验 + 报告
+download_options.py  期权快照 / BVOL / 1h 现货下载
+cmb/options.py       期权实验:BS 定价、校准、彩票、追跌看跌、马丁
+run_options.py       期权实验 + 报告
 ```
 
 ## 规则与参数
@@ -113,6 +116,20 @@ python run_short.py                  # 约 1 分钟
 - 只使用永续合约数据:当时没有永续合约的币,散户本来也做空不了。
 - 剔除了 2026 年币安上线的股票 / ETF / 大宗商品 / 外汇等“传统金融”永续(名单见 `cmb/universe.py` 的 `TRADFI_PERPS`)。
 - 持仓期间用 4h K 线检查止损;止损成交价 = max(止损价, 下一根 K 线开盘价),同一根 K 线内按对空头最不利的顺序处理。
+
+## 独立实验:期权(彩票期权 & 暴跌后追买看跌)
+
+报告:[`results_options/REPORT_OPTIONS.md`](results_options/REPORT_OPTIONS.md)
+
+```bash
+python download_options.py    # 期权真实快照 + BVOL 指数 + 1h 现货(约 5 分钟)
+python run_options.py         # 约 1 分钟
+```
+
+- **数据局限**:币安公开的期权逐小时真实快照(买一/卖一/IV/Delta)只有 2023-05-18 ~ 2023-10-23;
+  更长的结果用币安 BVOL 隐含波动率指数(2023-06 起,真实数据)× 用真实快照校准的偏斜/价差系数,按 Black–Scholes 估算,
+  报告里两部分分开列出。Deribit 等更长的期权历史在本环境的网络策略下无法访问。
+- 手续费按币安期权 0.03% × 标的名义价值、行权 0.015%;是否有“不超过权利金 10%”的上限未能确认,两种都跑。
 
 ## 局限
 
