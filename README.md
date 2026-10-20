@@ -10,7 +10,7 @@ A long model answer can take 10 seconds or more to generate. If your UI waits fo
 
 | | **react-stream-markdown** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
 |---|--:|--:|--:|--:|
-| Bundle size (gzipped) | **7.0 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
+| Bundle size (gzipped) | **7.8 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
 | Direct runtime dependencies | **0** | 15 | 12 | 17 |
 | Main-thread time, 10k-character reply | **1.1 s** (2.9 s with fade-in) | 2.0 s | 2.6 s | 6.4 s |
 | Slowest single update | **3.3 ms** (7.3 ms with fade-in) | 15.3 ms | 14.4 ms | 38.7 ms |
@@ -33,7 +33,7 @@ That works for a demo, then breaks down on real replies:
 | Fade-in effect | Hard to limit to new text | Only newly arrived characters fade in |
 | Untrusted model output | Depends on the renderer (`marked` + `innerHTML` needs a sanitizer) | No `innerHTML` at all: raw HTML shows as text, only `http(s)`/`mailto` links |
 
-Zero runtime dependencies, 7.0 kB gzipped (React is a peer dependency). See [benchmarks](#benchmarks).
+Zero runtime dependencies, 7.8 kB gzipped (React is a peer dependency). See [benchmarks](#benchmarks).
 
 ## How it compares
 
@@ -43,16 +43,16 @@ react-stream-markdown is not the first library for this. Pick the one that fits:
 |---|---|---|---|
 | What it is | Small streaming Markdown renderer | Full drop-in replacement for react-markdown | Headless streaming Markdown engine |
 | Built on | Its own parser, no runtime dependencies | remark/rehype; Shiki, KaTeX, Mermaid as plugins | react-markdown, marked, KaTeX, remend |
-| Size (gzipped) | 7.0 kB | 164.0 kB core | 147.8 kB |
+| Size (gzipped) | 7.8 kB | 164.0 kB core | 147.8 kB |
 | Unfinished syntax | Rendered optimistically | Repaired (remend) | Repaired (remend) |
 | Finished blocks | Frozen, never touched again | Memoized | Cached; only the tail re-renders |
 | Fade-in | Per character, optional | Optional (`animated`) | Character or word, cadence presets |
-| Code highlighting, math, diagrams | No | Yes | Math |
+| Code highlighting, math, diagrams | Math (opt-in, bring your own KaTeX) | Yes | Math |
 | Untrusted HTML | Never parsed; DOM built without `innerHTML` | Hardened (rehype-harden) | Via react-markdown |
 
 Other options: [llm-ui](https://github.com/llm-ui-kit/llm-ui) hides broken Markdown, throttles output to the frame rate and lets you render custom components inside replies. [FlowToken](https://github.com/Ephibbs/flowtoken) focuses on text animations (fade, blur, typewriter and more).
 
-**When to use which:** need syntax highlighting, math or Mermaid, or a react-markdown replacement? Use Vercel Streamdown. Want word-by-word cadence presets? Look at lobehub/streamdown. Want custom components inside replies? Try llm-ui. Want the smallest option with no dependencies, no `innerHTML`, and built-in timing measurement? Use react-stream-markdown.
+**When to use which:** need syntax highlighting or Mermaid, or a react-markdown replacement? Use Vercel Streamdown. Want word-by-word cadence presets? Look at lobehub/streamdown. Want custom components inside replies? Try llm-ui. Want the smallest option with no dependencies, no `innerHTML`, and built-in timing measurement? Use react-stream-markdown.
 
 ## Benchmark details
 
@@ -62,7 +62,7 @@ Measured, not estimated. Scripts are in [`bench/`](bench) (`cd bench && npm inst
 
 | Library | Minified | Gzipped |
 |---|--:|--:|
-| **react-stream-markdown** (`StreamingMarkdown` + `createTextStream`) | **20.3 kB** | **7.0 kB** |
+| **react-stream-markdown** (`StreamingMarkdown` + `createTextStream`) | **23.1 kB** | **7.8 kB** |
 | react-markdown + remark-gfm | 206.2 kB | 51.4 kB |
 | @lobehub/streamdown 1.4.0 | 602.6 kB | 147.8 kB |
 | streamdown (Vercel) 2.7.0, core without plugins | 619.5 kB | 164.0 kB |
@@ -139,6 +139,7 @@ source.onerror = () => { s.fail(new Error('Connection lost')); source.close(); }
 - **Optimistic rendering of unfinished syntax.** `**bo`, `` `npm i``, an open ```` ``` ```` fence, or a table header without its separator row all render as what they will become.
 - **Gentle fade-in (optional).** New characters fade in left to right; visible text never replays. Turn it off with `animate={false}`. Turned off automatically for `prefers-reduced-motion`, hidden tabs, and large bursts.
 - **Correct lifecycle.** Stop and errors keep the partial reply; restarting ignores stale chunks from the previous request.
+- **Math (opt-in).** `$…$`, `$$…$$`, `\(…\)` and `\[…\]`, typeset with KaTeX or any renderer you pass. See [Math](#math).
 - **Safe for model output.** DOM is built with `createElement`/`textContent`. Raw HTML is displayed as text. `javascript:` and other non-web links are not linked. Images are shown as links instead of auto-loading model-chosen URLs.
 
 ## API
@@ -156,16 +157,40 @@ Creates a controller you can render with any of the components. Pass `{batch: fa
 | `session.append(delta)` | Add new text. Deltas, not the cumulative text. |
 | `session.complete()` / `session.interrupt()` / `session.fail(error)` | End the reply. The text stays. |
 
-### `<StreamingMarkdown stream session? animate? label? className? />`
+### `<StreamingMarkdown stream session? animate? math? label? className? />`
 
 Renders the reply as Markdown. `animate` defaults to `true`. Default styles are in `react-stream-markdown/style.css` and inherit your font and colors; code blocks get a `language-*` class.
+
+### Math
+
+Off by default, because `$` is common in ordinary replies. KaTeX is not bundled: install it yourself and pass it in.
+
+```sh
+npm i katex
+```
+
+```tsx
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import {katexMath, StreamingMarkdown} from 'react-stream-markdown';
+
+const math = katexMath(katex);   // create once, outside the component
+
+<StreamingMarkdown stream={stream} math={math} />
+```
+
+- Recognised: inline `$…$` and `\(…\)`, display `$$…$$` and `\[…\]` (on their own lines or inside a paragraph).
+- Prices stay text: `$` only opens math when followed by a non-space, and only closes when preceded by a non-space and not followed by a digit (`$5 to $10` is not math). `\$` is always a literal dollar.
+- While streaming, a formula is typeset once its closing delimiter arrives; until then its TeX shows as text, so half-written TeX never flashes an error. Finished formulas are never re-typeset.
+- `math={true}` recognises math without a renderer and shows the TeX source (class `rsm-math`, `rsm-math-display`).
+- `katexMath(katex, options?)` uses `throwOnError: false` and `trust: false` (no `\href`, `\htmlClass`, etc. from model output); `options` are passed to `katex.render`. Any `(tex, element, {displayMode}) => void` works as a renderer.
 
 ### Also included
 
 - `<StreamingText>`: plain text, one stable text node.
 - `<SmoothedStreamingText>`: plain text with the same fade-in.
 - `useStreamingText(stream)`: React hook returning the current snapshot.
-- `parseMarkdown(text, {open})`: the parser on its own, returning a block tree (for custom renderers).
+- `parseMarkdown(text, {open, math})`: the parser on its own, returning a block tree (for custom renderers).
 - `durations(snapshot.marks)`: optional timing (time to first text, time to visible, etc.). See [measurement notes](docs/measurement.md).
 
 ## Run the demo locally
@@ -181,8 +206,8 @@ npm run build      # static demo in dist/
 
 ## Limits
 
-Not supported: raw HTML, footnotes, math, and syntax highlighting (style `pre code.language-*` yourself). The component does not auto-scroll or virtualize very long histories; the demo shows a small auto-follow hook you can copy.
+Not supported: raw HTML, footnotes, and syntax highlighting (style `pre code.language-*` yourself). The component does not auto-scroll or virtualize very long histories; the demo shows a small auto-follow hook you can copy.
 
 ## License
 
-MIT. Issues and pull requests are welcome.
+[PolyForm Noncommercial 1.0.0](LICENSE). Free for personal, research, educational and other noncommercial use. **Commercial use is not permitted.** For a commercial license, contact the author via [GitHub](https://github.com/Lemofyz). Issues and pull requests are welcome.

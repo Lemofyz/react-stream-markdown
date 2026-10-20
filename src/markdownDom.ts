@@ -2,7 +2,13 @@ import type {Block,Inline} from './markdown.js';
 import {graphemes} from './reveal.js';
 
 /** Minimal virtual node. Strings are text; everything is built with DOM APIs, never innerHTML. */
-export type VNode = string | {tag:string;attrs?:Record<string,string>;children:VNode[]};
+export type VNode = string | {tag:string;attrs?:Record<string,string>;children:VNode[]} | MathNode;
+/** Finished TeX, handed to the math renderer as a whole. */
+interface MathNode {math:string;display:boolean}
+const isMath = (node: VNode): node is MathNode => typeof node !== 'string' && 'math' in node;
+
+/** Renders TeX into `target` using DOM APIs, e.g. `katexMath(katex)`. */
+export type MathRenderer = (tex: string,target: HTMLElement,options: {displayMode: boolean}) => void;
 
 const el = (tag: string,children: VNode[],attrs?: Record<string,string>): VNode => attrs ? {tag,attrs,children} : {tag,children};
 
@@ -11,6 +17,7 @@ function inline(node: Inline): VNode {
     case 'text': return node.value;
     case 'br': return el('br',[]);
     case 'code': return el('code',[node.value]);
+    case 'math': return {math:node.value,display:node.display};
     case 'strong': case 'em': case 'del': return el(node.type,node.children.map(inline));
     case 'link': return node.href === null
       ? el('span',node.children.map(inline),{class:'rsm-link-pending'})
@@ -22,6 +29,7 @@ export function blockToVNode(block: Block,tight = false): VNode[] {
     case 'paragraph': return tight ? block.children.map(inline) : [el('p',block.children.map(inline))];
     case 'heading': return [el(`h${block.level}`,block.children.map(inline))];
     case 'code': return [el('pre',[el('code',[block.value],block.lang ? {class:`language-${block.lang}`,'data-lang':block.lang} : undefined)])];
+    case 'math': return [block.pending ? el('div',[block.value],{class:'rsm-math rsm-math-display rsm-math-pending'}) : {math:block.value,display:true}];
     case 'hr': return [el('hr',[])];
     case 'blockquote': return [el('blockquote',block.children.flatMap(b=>blockToVNode(b)))];
     case 'list': return [el(block.ordered ? 'ol' : 'ul',block.items.map(item=>{
@@ -39,7 +47,7 @@ export function blockToVNode(block: Block,tight = false): VNode[] {
   }
 }
 
-export const textOf = (nodes: VNode[]): string => nodes.map(n=>typeof n === 'string' ? n : textOf(n.children)).join('');
+export const textOf = (nodes: VNode[]): string => nodes.map(n=>typeof n === 'string' ? n : isMath(n) ? n.math : textOf(n.children)).join('');
 export function commonPrefix(a: string,b: string): number {
   const max = Math.min(a.length,b.length);
   let i = 0;
@@ -54,6 +62,8 @@ export interface PatchContext {
   revealFrom: number;
   spans: HTMLElement[];
   touched: Set<HTMLElement>;
+  /** Without one, math is shown as its TeX source. */
+  math?: MathRenderer;
 }
 
 function appendText(wrapper: HTMLElement,text: string,at: number,ctx: PatchContext) {
@@ -81,6 +91,17 @@ function build(node: VNode,ctx: PatchContext): Node {
     ctx.offset += node.length;
     return wrapper;
   }
+  if (isMath(node)) {
+    const element = document.createElement(node.display ? 'div' : 'span');
+    element.className = node.display ? 'rsm-math rsm-math-display' : 'rsm-math';
+    element.textContent = node.math;
+    if (ctx.math) {
+      try { ctx.math(node.math,element,{displayMode:node.display}); }
+      catch { element.textContent = node.math; }
+    }
+    ctx.offset += node.math.length;
+    return element;
+  }
   const element = document.createElement(node.tag);
   for (const [name,value] of Object.entries(node.attrs ?? {})) element.setAttribute(name,value);
   for (const child of node.children) element.append(build(child,ctx));
@@ -98,7 +119,11 @@ function patchNode(live: Node,before: VNode,after: VNode,ctx: PatchContext): Nod
     ctx.offset += after.length;
     return live;
   }
-  if (typeof after !== 'string' && typeof before !== 'string' && before.tag === after.tag) {
+  if (isMath(before) && isMath(after) && before.math === after.math && before.display === after.display) {
+    ctx.offset += after.math.length;
+    return live;
+  }
+  if (typeof after !== 'string' && typeof before !== 'string' && !isMath(before) && !isMath(after) && before.tag === after.tag) {
     syncAttrs(live as Element,before.attrs,after.attrs);
     patchChildren(live,Array.from(live.childNodes),before.children,after.children,ctx);
     return live;

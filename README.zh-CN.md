@@ -10,7 +10,7 @@
 
 | | **react-stream-markdown** | Vercel streamdown | @lobehub/streamdown | react-markdown + remark-gfm |
 |---|--:|--:|--:|--:|
-| 打包体积（gzip） | **7.0 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
+| 打包体积（gzip） | **7.8 kB** | 164.0 kB | 147.8 kB | 51.4 kB |
 | 直接运行时依赖 | **0** | 15 | 12 | 17 |
 | 渲染 1 万字回答的主线程耗时 | **1.1 秒**（开淡入 2.9 秒） | 2.0 秒 | 2.6 秒 | 6.4 秒 |
 | 单次更新最慢耗时 | **3.3 ms**（开淡入 7.3 ms） | 15.3 ms | 14.4 ms | 38.7 ms |
@@ -33,7 +33,7 @@
 | 淡入效果 | 很难只作用于新文字 | 只有新到的字符会淡入 |
 | 不可信的模型输出 | 取决于渲染器（`marked` + `innerHTML` 需要额外清洗） | 完全不用 `innerHTML`：原始 HTML 当文本显示，只允许 `http(s)`/`mailto` 链接 |
 
-零运行时依赖，gzip 后 7.0 kB（React 为 peer 依赖）。和其他库的对比见[性能基准测试](#性能基准测试)。
+零运行时依赖，gzip 后 7.8 kB（React 为 peer 依赖）。和其他库的对比见[性能基准测试](#性能基准测试)。
 
 ## 和同类项目对比
 
@@ -43,16 +43,16 @@
 |---|---|---|---|
 | 定位 | 小巧的流式 Markdown 渲染器 | 可以直接替换 react-markdown 的完整方案 | 无样式的流式 Markdown 引擎 |
 | 依赖 | 自带解析器，零运行时依赖 | remark/rehype；Shiki、KaTeX、Mermaid 以插件形式提供 | react-markdown、marked、KaTeX、remend |
-| 体积（gzip） | 7.0 kB | 核心 164.0 kB | 147.8 kB |
+| 体积（gzip） | 7.8 kB | 核心 164.0 kB | 147.8 kB |
 | 没写完的语法 | 提前按最终样式渲染 | 自动补全（remend） | 自动补全（remend） |
 | 写完的块 | 冻结，不再改动 | 缓存（memoized） | 缓存，只重新渲染末尾 |
 | 淡入 | 按字符，可关闭 | 可选（`animated`） | 按字符或按词，有节奏预设 |
-| 代码高亮、数学公式、图表 | 不支持 | 支持 | 支持数学公式 |
+| 代码高亮、数学公式、图表 | 数学公式（可选，自带 KaTeX） | 支持 | 支持数学公式 |
 | 不可信的 HTML | 从不解析，DOM 不用 `innerHTML` 构建 | 加固处理（rehype-harden） | 由 react-markdown 处理 |
 
 其他选择：[llm-ui](https://github.com/llm-ui-kit/llm-ui) 会隐藏写坏的 Markdown、按帧率平滑输出，还能在回答里渲染自定义组件；[FlowToken](https://github.com/Ephibbs/flowtoken) 专注文字动画（淡入、模糊、打字机等）。
 
-**怎么选：**需要代码高亮、数学公式、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 react-stream-markdown。
+**怎么选：**需要代码高亮、Mermaid 图表，或者想直接替换 react-markdown，用 Vercel Streamdown；想要按词出现的节奏预设，看 lobehub/streamdown；需要在回答里嵌自定义组件，试试 llm-ui；想要体积最小、零依赖、不用 `innerHTML`、自带耗时测量，用 react-stream-markdown。
 
 ## 实测数据详情
 
@@ -62,7 +62,7 @@
 
 | 库 | 压缩后 | gzip 后 |
 |---|--:|--:|
-| **react-stream-markdown**（`StreamingMarkdown` + `createTextStream`） | **20.3 kB** | **7.0 kB** |
+| **react-stream-markdown**（`StreamingMarkdown` + `createTextStream`） | **23.1 kB** | **7.8 kB** |
 | react-markdown + remark-gfm | 206.2 kB | 51.4 kB |
 | @lobehub/streamdown 1.4.0 | 602.6 kB | 147.8 kB |
 | streamdown（Vercel）2.7.0，不含插件的核心 | 619.5 kB | 164.0 kB |
@@ -139,6 +139,7 @@ source.onerror = () => { s.fail(new Error('连接中断')); source.close(); };
 - **未写完的语法提前按最终样式渲染。** `**粗`、`` `npm i``、没闭合的 ```` ``` ````、还没有分隔行的表头，都会直接显示成它们最终的样子。
 - **轻量淡入（可选）。** 新字符从左到右淡入，已显示的文字不会重播。用 `animate={false}` 关闭。在系统开启"减少动态效果"、标签页在后台、或者一次涌入大量文字时会自动关闭。
 - **生命周期处理完整。** 停止和出错时保留已收到的内容；重新开始时忽略上一次请求迟到的片段。
+- **数学公式（可选）。** 支持 `$…$`、`$$…$$`、`\(…\)`、`\[…\]`，用 KaTeX 或你传入的任意渲染器排版。见[数学公式](#数学公式)。
 - **对模型输出安全。** DOM 用 `createElement`/`textContent` 构建，原始 HTML 当文本显示，`javascript:` 等非网页链接不会生成链接，图片显示为链接而不是自动加载模型给出的地址。
 
 ## API
@@ -156,16 +157,40 @@ source.onerror = () => { s.fail(new Error('连接中断')); source.close(); };
 | `session.append(delta)` | 追加新文本。传增量，不是累计全文。 |
 | `session.complete()` / `session.interrupt()` / `session.fail(error)` | 结束回答，文字保留。 |
 
-### `<StreamingMarkdown stream session? animate? label? className? />`
+### `<StreamingMarkdown stream session? animate? math? label? className? />`
 
 把回答渲染为 Markdown，`animate` 默认 `true`。默认样式在 `react-stream-markdown/style.css` 里，继承你页面的字体和颜色；代码块带 `language-*` 类名。
+
+### 数学公式
+
+默认关闭，因为普通回答里 `$` 很常见。本库不打包 KaTeX，需要自己安装并传进来：
+
+```sh
+npm i katex
+```
+
+```tsx
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import {katexMath, StreamingMarkdown} from 'react-stream-markdown';
+
+const math = katexMath(katex);   // 在组件外创建一次
+
+<StreamingMarkdown stream={stream} math={math} />
+```
+
+- 支持：行内 `$…$`、`\(…\)`，块级 `$$…$$`、`\[…\]`（单独成行或写在段落里都可以）。
+- 价格不会被误认为公式：`$` 后面必须紧跟非空白字符才算开始，结束的 `$` 前面必须是非空白字符、后面不能是数字（`$5 到 $10` 不是公式）。`\$` 始终是普通美元符号。
+- 流式输出时，公式等结束符到达后才排版，之前以 TeX 原文显示，所以写到一半的 TeX 不会闪出报错。已排版的公式不会重复排版。
+- `math={true}` 只识别公式、不排版，显示 TeX 原文（类名 `rsm-math`、`rsm-math-display`）。
+- `katexMath(katex, options?)` 默认 `throwOnError: false`、`trust: false`（模型输出不能使用 `\href`、`\htmlClass` 等）；`options` 会传给 `katex.render`。任何 `(tex, element, {displayMode}) => void` 函数都可以作为渲染器。
 
 ### 其他导出
 
 - `<StreamingText>`：纯文本，只用一个稳定的文本节点。
 - `<SmoothedStreamingText>`：纯文本 + 同样的淡入效果。
 - `useStreamingText(stream)`：返回当前快照的 React hook。
-- `parseMarkdown(text, {open})`：单独使用解析器，返回块结构（方便自定义渲染）。
+- `parseMarkdown(text, {open, math})`：单独使用解析器，返回块结构（方便自定义渲染）。
 - `durations(snapshot.marks)`：可选的耗时统计（首字时间、可见时间等），见[测量说明](docs/measurement.md)。
 
 ## 本地运行演示
@@ -181,8 +206,8 @@ npm run build      # 静态演示输出到 dist/
 
 ## 暂不支持
 
-原始 HTML、脚注、数学公式、语法高亮（可以自己给 `pre code.language-*` 加样式）。组件不负责自动滚动，也不做超长历史的虚拟列表；演示里有一个可以直接复制的"自动跟随到底部"小 hook。
+原始 HTML、脚注、语法高亮（可以自己给 `pre code.language-*` 加样式）。组件不负责自动滚动，也不做超长历史的虚拟列表；演示里有一个可以直接复制的"自动跟随到底部"小 hook。
 
 ## 许可证
 
-MIT。欢迎提 Issue 和 PR。
+[PolyForm Noncommercial 1.0.0](LICENSE)。个人、研究、教育等非商业用途可免费使用，**禁止商业用途**。如需商业授权，请通过 [GitHub](https://github.com/Lemofyz) 联系作者。欢迎提 Issue 和 PR。

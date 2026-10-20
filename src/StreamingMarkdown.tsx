@@ -1,28 +1,36 @@
 import {useLayoutEffect,useRef} from 'react';
 import type {StreamSession,TextStream} from './stream.js';
 import {parseBlocks} from './markdown.js';
-import {blockToVNode,commonPrefix,patchChildren,textOf,type PatchContext,type VNode} from './markdownDom.js';
+import {blockToVNode,commonPrefix,patchChildren,textOf,type MathRenderer,type PatchContext,type VNode} from './markdownDom.js';
 import {observeFirstVisible} from './visibility.js';
 import {createReveal} from './reveal.js';
 
-interface Rendered {stream:TextStream|null;id:number;text:string;open:boolean;offset:number;live:Node[];vnodes:VNode[]}
-const fresh = (stream: TextStream|null = null,id = 0): Rendered => ({stream,id,text:'',open:true,offset:0,live:[],vnodes:[]});
+interface Rendered {stream:TextStream|null;id:number;math:boolean;text:string;open:boolean;offset:number;live:Node[];vnodes:VNode[]}
+const fresh = (stream: TextStream|null = null,id = 0,math = false): Rendered => ({stream,id,math,text:'',open:true,offset:0,live:[],vnodes:[]});
 
 /**
  * Render a growing Markdown reply. Finished blocks are frozen and never touched again; only the
  * block still being written is re-parsed, so each update costs the size of that block, not the
  * whole reply. New characters fade in left to right (optional); visible text never replays.
  */
-export function StreamingMarkdown({stream,session,label='Streaming reply',className='',animate=true}: {
+export function StreamingMarkdown({stream,session,label='Streaming reply',className='',animate=true,math=false}: {
   stream:TextStream; /** Pass the session only if you want timing marks (first commit, first visible). */
   session?:StreamSession|null; label?:string; className?:string;
   /** Fade in newly arrived characters. Reduced-motion users never see the effect. */
   animate?:boolean;
+  /**
+   * Recognise `$…$`, `$$…$$`, `\(…\)` and `\[…\]`. `true` shows the TeX source; pass a renderer such
+   * as `katexMath(katex)` to typeset it. Math is rendered once its closing delimiter has arrived.
+   */
+  math?:boolean|MathRenderer;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const rendered = useRef<Rendered>(fresh());
   const animateRef = useRef(animate);
   animateRef.current = animate;
+  const mathEnabled = math !== false;
+  const renderer = useRef<MathRenderer|undefined>(undefined);
+  renderer.current = typeof math === 'function' ? math : undefined;
   useLayoutEffect(() => {
     const container = element.current!;
     // Text wrappers with running reveals. When a wrapper's reveals end, its spans merge back into one text node.
@@ -44,16 +52,16 @@ export function StreamingMarkdown({stream,session,label='Streaming reply',classN
       const state = stream.getSnapshot();
       const open = state.status === 'streaming';
       let r = rendered.current;
-      if (stream !== r.stream || state.id !== r.id || !state.text.startsWith(r.text)) {
+      if (stream !== r.stream || state.id !== r.id || mathEnabled !== r.math || !state.text.startsWith(r.text)) {
         reveal.settle(); running.clear(); cancelProbe?.(); cancelProbe = null;
         container.replaceChildren();
-        r = rendered.current = fresh(stream,state.id);
+        r = rendered.current = fresh(stream,state.id,mathEnabled);
       }
       if (state.text !== r.text || open !== r.open) {
         const source = state.text.slice(r.offset);
-        const blocks = parseBlocks(source,open);
+        const blocks = parseBlocks(source,open,mathEnabled);
         const vnodes = blocks.map(b=>blockToVNode(b.block)[0]);
-        const ctx: PatchContext = {offset:0,revealFrom:animateRef.current ? commonPrefix(textOf(r.vnodes),textOf(vnodes)) : Infinity,spans:[],touched:new Set()};
+        const ctx: PatchContext = {offset:0,revealFrom:animateRef.current ? commonPrefix(textOf(r.vnodes),textOf(vnodes)) : Infinity,spans:[],touched:new Set(),math:renderer.current};
         r.live = patchChildren(container,r.live,r.vnodes,vnodes,ctx);
         r.vnodes = vnodes;
         r.text = state.text;
@@ -83,6 +91,6 @@ export function StreamingMarkdown({stream,session,label='Streaming reply',classN
     const unsubscribe = stream.subscribe(update);
     update();
     return () => { unsubscribe(); reveal.dispose(); cancelProbe?.(); };
-  },[stream,session]);
+  },[stream,session,mathEnabled]);
   return <div ref={element} className={`rsm-markdown ${className}`} role="region" aria-label={label}/>;
 }
