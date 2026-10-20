@@ -1,9 +1,7 @@
-"""期权实验(纯模拟,不下任何真实订单):
+"""期权实验的公共部分 + “彩票期权”实验 + 马丁对照(纯模拟,不下任何真实订单)。
 
-A. “彩票期权”:每天到期前 24 小时买最便宜的一档虚值看涨 + 看跌(|Delta| 0.02–0.05),
-   各花账户 0.2%;价值达到成本 10 倍卖一半,其余持有到期。
-B. 暴跌后追买看跌:4h 线 24 小时内跌 ≥ X% 且收盘 < MA20 → 买下一个周五到期、Delta≈−0.3 的看跌,
-   花账户 1%;价值翻倍卖一半;其余在 4h 收盘站回 MA20 或到期前 1 天平仓。另做“马丁对照”。
+彩票期权:每天到期前 24 小时买最便宜的一档虚值看涨 + 看跌(|Delta| 0.02–0.05),各花账户 0.2%;
+价值达到成本 10 倍卖一半,其余持有到期。
 
 两种数据:
 - real:币安期权逐小时真实快照(买一/卖一/标记价/IV/Delta),只公开了 2023-05-18 ~ 2023-10-23;
@@ -11,7 +9,7 @@ B. 暴跌后追买看跌:4h 线 24 小时内跌 ≥ X% 且收盘 < MA20 → 买�
 - model:2023-06-20 起用币安 BVOL 指数(真实 30 天隐含波动率)× 用真实快照校准的“偏斜系数”,
   再用 Black–Scholes 定价;买卖价 = 理论价 × 用真实快照校准的卖一/买一系数。属于模型估算,不是真实成交。
 
-每笔交易先按“每 1 USDT 权利金”算出 R(净盈亏 ÷ 权利金含手续费),再按资金比例做组合模拟。
+方向性的期权实验(顺势 / 逆势 / 跨式,含暴跌后追买看跌、均值回归)在 cmb/opt_framework.py。
 """
 from __future__ import annotations
 
@@ -78,23 +76,6 @@ class LotteryParams:
         return replace(self, **kw)
 
 
-@dataclass(frozen=True)
-class PutParams:
-    drop_thr: float = 0.08
-    lookback_bars: int = 6             # 6 根 4h = 24 小时
-    ma: int = 20
-    target_delta: float = -0.30
-    min_hours_to_expiry: int = 48      # “下一个周五”= 至少 48 小时后的最近一个周五 08:00 到期
-    budget: float = 0.01
-    take_mult: float = 2.0
-    take_frac: float = 0.5
-    exit_hours_before: int = 24
-    costs: Costs = Costs()
-
-    def with_(self, **kw):
-        return replace(self, **kw)
-
-
 # ----------------------------------------------------------------------------
 # 数据
 # ----------------------------------------------------------------------------
@@ -102,7 +83,7 @@ class PutParams:
 class OptData:
     def __init__(self, root: str | Path = "data/options"):
         self.root = Path(root)
-        self._chain, self._px, self._bvol, self._bars = {}, {}, {}, {}
+        self._chain, self._px, self._bvol = {}, {}, {}
 
     def chain(self, u: str) -> pd.DataFrame:
         if u not in self._chain:
@@ -139,24 +120,12 @@ class OptData:
                 self._bvol[u] = pd.Series(d.bvol.to_numpy(float), index=d.time + H).sort_index()
         return self._bvol[u]
 
-    def bars4h(self, u: str, ma: int, lookback: int) -> pd.DataFrame:
-        key = (u, ma, lookback)
-        if key not in self._bars:
-            d = pd.read_csv(self.root / "spot1h" / f"{u}.csv.gz", parse_dates=["time"]).set_index("time")
-            b = d.resample("4h").agg({"open": "first", "high": "max", "low": "min",
-                                      "close": "last"}).dropna()
-            b.index = b.index + pd.Timedelta(hours=4)      # 时间戳 = 收盘时刻
-            b["sma"] = b.close.rolling(ma).mean()
-            b["ret24"] = b.close / b.close.shift(lookback) - 1
-            self._bars[key] = b
-        return self._bars[key]
-
 
 # ----------------------------------------------------------------------------
 # 用真实快照校准模型(仅在 BVOL 与真实快照重叠的时段)
 # ----------------------------------------------------------------------------
 
-def calibrate(data: OptData, u: str, lp: LotteryParams, pp: PutParams) -> dict:
+def calibrate(data: OptData, u: str, lp: LotteryParams) -> dict:
     ch = data.chain(u)
     bv = data.bvol(u)
     px = data.px(u)
@@ -182,16 +151,6 @@ def calibrate(data: OptData, u: str, lp: LotteryParams, pp: PutParams) -> dict:
         out["lot_ask_ratio"] = float(np.median(lot.ask / lot.mark))
         out["lot_bid_ratio"] = float(np.median(lot.first_bid / lot.mark))
         out["lot_n"] = int(len(lot))
-    # 看跌:Delta −0.25 ~ −0.35、剩余 2–9 天
-    tenor = (ch.exp - ch.t) / pd.Timedelta(days=1)
-    pm = ch[(ch.cp == "P") & ch.delta.between(-0.35, -0.25) & tenor.between(2, 9)
-            & (ch.t >= bv.index[0]) & (ch.mark > 0) & (ch.ask > 0)]
-    atm = bv.reindex(pm.t).to_numpy() / 100
-    ok = ~np.isnan(atm)
-    out["put_iv_ratio"] = float(np.median(pm.iv.to_numpy()[ok] / atm[ok]))
-    out["put_ask_ratio"] = float(np.median(pm.ask / pm.mark))
-    out["put_bid_ratio"] = float(np.median(pm.bid / pm.mark))
-    out["put_n"] = int(ok.sum())
     return out
 
 
@@ -310,140 +269,6 @@ def _lottery_settle(r: dict, ST, times, bids, px, c: Costs, lp: LotteryParams) -
             "half_sold": half_at is not None, "half_at": half_at,
             "fee_share": c.trade_fee(r["S0"], r["ask"]) / cost,
             "exit_time": r["exp"]}
-
-
-# ----------------------------------------------------------------------------
-# B. 暴跌后追买看跌
-# ----------------------------------------------------------------------------
-
-def put_signals(data: OptData, u: str, pp: PutParams, start, end) -> pd.DataFrame:
-    b = data.bars4h(u, pp.ma, pp.lookback_bars)
-    cond = (b.ret24 <= -pp.drop_thr) & (b.close < b.sma)
-    trig = cond & ~cond.shift(1, fill_value=False)       # 条件“刚出现”的那根才算新信号
-    s = b[trig].loc[start:end]
-    return s.assign(u=u)
-
-
-def next_friday(t: pd.Timestamp, min_hours: int) -> pd.Timestamp:
-    d = (t + pd.Timedelta(hours=min_hours)).normalize() + pd.Timedelta(hours=8)
-    if d < t + pd.Timedelta(hours=min_hours):
-        d += pd.Timedelta(days=1)
-    while d.dayofweek != 4:
-        d += pd.Timedelta(days=1)
-    return d
-
-
-def _put_manage(entry: dict, times, bids, S_path, bars, pp: PutParams, c: Costs,
-                ST, exp) -> dict:
-    """持仓管理(每 1 单位期权):翻倍卖一半 → MA20 收复 / 到期前 1 天平仓 → 否则到期结算。"""
-    ask = entry["ask"]
-    cost = ask + c.trade_fee(entry["S0"], ask)
-    q, proceeds = 1.0, 0.0
-    half_at, exit_t, reason = None, None, None
-    stop_t = exp - pp.exit_hours_before * H
-    reclaim = bars[(bars.index > entry["t"]) & (bars.close > bars.sma)].index
-    reclaim_t = reclaim[0] if len(reclaim) else None
-    for tt, b, S in zip(times, bids, S_path):
-        tt = pd.Timestamp(tt)
-        if half_at is None and b >= pp.take_mult * ask:
-            sq = q * pp.take_frac
-            proceeds += sq * (b - c.trade_fee(S, b))
-            q -= sq
-            half_at = tt
-        hit_reclaim = reclaim_t is not None and tt >= reclaim_t
-        if (hit_reclaim or tt >= stop_t) and b > 0:
-            proceeds += q * (b - c.trade_fee(S, b))
-            q = 0.0
-            exit_t, reason = tt, ("ma_reclaim" if hit_reclaim else "pre_expiry")
-            break
-    if q > 0:                                             # 一直没有买一价:持有到期结算
-        intrinsic = max(entry["K"] - ST, 0)
-        proceeds += q * (intrinsic - c.exercise_fee(ST, intrinsic))
-        exit_t, reason = exp, "expiry"
-    return {**entry, "exp": exp, "cost": cost, "proceeds": proceeds,
-            "R": proceeds / cost - 1, "multiple": proceeds / cost, "half_sold": half_at is not None,
-            "half_at": half_at, "exit_time": exit_t, "exit_reason": reason,
-            "hold_hours": (exit_t - entry["t"]) / H}
-
-
-def _bvol_context(bv: pd.Series | None, t) -> dict:
-    if bv is None or t not in bv.index:
-        return {"bvol": np.nan, "bvol_med30": np.nan}
-    hist = bv.loc[t - pd.Timedelta(days=30): t - H]
-    return {"bvol": float(bv[t]), "bvol_med30": float(hist.median()) if len(hist) else np.nan}
-
-
-def put_real(data: OptData, u: str, pp: PutParams) -> pd.DataFrame:
-    ch = data.chain(u)
-    px = data.px(u)
-    bars = data.bars4h(u, pp.ma, pp.lookback_bars)
-    bv = data.bvol(u)
-    by_sym = {s: g.sort_values("t") for s, g in ch.groupby("symbol")}
-    sig = put_signals(data, u, pp, ch.t.min(), ch.t.max())
-    out, busy_until = [], pd.Timestamp.min
-    tenor_d = (ch.exp - ch.t) / pd.Timedelta(days=1)
-    for t, row in sig.iterrows():
-        if t <= busy_until:
-            continue
-        exp = next_friday(t, pp.min_hours_to_expiry)
-        g = ch[(ch.t == t) & (ch.exp == exp) & (ch.cp == "P") & (ch.ask > 0)]
-        if g.empty or exp not in px.index:
-            continue
-        pick = g.iloc[(g.delta - pp.target_delta).abs().argmin()]
-        # “平时”的同类期权 IV:过去 30 天、Delta −0.25~−0.35、剩余 2–9 天的看跌中位数
-        ref = ch[(ch.cp == "P") & ch.delta.between(-0.35, -0.25) & tenor_d.between(2, 9)
-                 & (ch.t < t) & (ch.t >= t - pd.Timedelta(days=30))]
-        path = by_sym[pick.symbol]
-        path = path[(path.t > t) & (path.t <= exp)]
-        entry = {"u": u, "t": t, "symbol": pick.symbol, "K": pick.K, "S0": px.get(t, np.nan),
-                 "ask": pick.ask, "mark": pick.mark, "iv": pick.iv, "delta": pick.delta,
-                 "iv_ref": float(ref.iv.median()) if len(ref) else np.nan,
-                 "drop24": row.ret24, **_bvol_context(bv, t)}
-        res = _put_manage(entry, path.t.to_numpy(), path.bid.to_numpy(),
-                          px.reindex(path.t).ffill().to_numpy(), bars, pp, pp.costs,
-                          px[exp], exp)
-        out.append(res)
-        busy_until = res["exit_time"]
-    return pd.DataFrame(out)
-
-
-def put_model(data: OptData, u: str, pp: PutParams, cal: dict, start=None, end=None) -> pd.DataFrame:
-    bv, px = data.bvol(u), data.px(u)
-    bars = data.bars4h(u, pp.ma, pp.lookback_bars)
-    start = start or bv.index[0] + pd.Timedelta(days=30)
-    end = end or bv.index[-1]
-    sig = put_signals(data, u, pp, start, end)
-    tick, step_pct = cal["tick"], cal["step_pct"]
-    ratio = cal["put_iv_ratio"]
-    out, busy_until = [], pd.Timestamp.min
-    for t, row in sig.iterrows():
-        if t <= busy_until or t not in bv.index or t not in px.index:
-            continue
-        exp = next_friday(t, pp.min_hours_to_expiry)
-        if exp not in px.index:
-            continue
-        S0 = px[t]
-        sig0 = bv[t] / 100 * ratio
-        T0 = (exp - t) / pd.Timedelta(days=365)
-        step = _nice_step(S0 * step_pct)
-        K = np.arange(np.floor(S0 * 0.5 / step), np.ceil(S0 / step) + 1) * step
-        price, delta = bs(S0, K, T0, sig0, "P")
-        i = int(np.abs(delta - pp.target_delta).argmin())
-        mark = float(price[i])
-        ask = max(tick, math.ceil(mark * cal["put_ask_ratio"] / tick - 1e-9) * tick)
-        hours = pd.date_range(t + H, exp, freq="h")
-        hours = hours[hours.isin(px.index) & hours.isin(bv.index)]
-        S_path = px.reindex(hours).to_numpy()
-        Tl = ((exp - hours) / pd.Timedelta(days=365)).to_numpy()
-        pb, _ = bs(S_path, K[i], Tl, bv.reindex(hours).to_numpy() / 100 * ratio, "P")
-        bids = np.floor(pb * cal["put_bid_ratio"] / tick) * tick
-        entry = {"u": u, "t": t, "symbol": f"model-P-{K[i]:g}", "K": float(K[i]), "S0": S0,
-                 "ask": ask, "mark": mark, "iv": sig0, "delta": float(delta[i]),
-                 "iv_ref": np.nan, "drop24": row.ret24, **_bvol_context(bv, t)}
-        res = _put_manage(entry, hours.to_numpy(), bids, S_path, bars, pp, pp.costs, px[exp], exp)
-        out.append(res)
-        busy_until = res["exit_time"]
-    return pd.DataFrame(out)
 
 
 # ----------------------------------------------------------------------------

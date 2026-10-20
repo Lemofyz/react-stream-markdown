@@ -4,6 +4,7 @@
   BTC / ETH / BNB / XRP / DOGE,币安只公开了 2023-05-18 ~ 2023-10-23 这一段
 - BVOL 指数(币安 BTC / ETH 30 天隐含波动率指数,逐秒)→ 重采样为每小时:2023-06-20 起
 - 标的现货 1 小时 K 线(用于到期结算价和 4 小时信号):2023-01 起
+- BTC / ETH 现货 4 小时 K 线:2019-06 起(三版本对比框架用)
 
 用法:
     python download_options.py
@@ -103,12 +104,36 @@ def spot_1h(workers, start="2023-01"):
         print(f"1h {u}: {len(df)} 根")
 
 
+def spot_4h(workers, start="2019-06"):
+    """BTC / ETH 的 4 小时 K 线(2019-06 起):市场状态、布林带压缩、暴跌信号和模型估值路径。"""
+    for u in ("BTCUSDT", "ETHUSDT"):
+        dest = OUT / "spot4h" / f"{u}.csv.gz"
+        if dest.exists():
+            continue
+        keys = [k for k in keys_under(f"data/spot/monthly/klines/{u}/4h/") if k[-11:-4] >= start]
+        frames = pool([lambda k=k: read_zip(_get(f"{BUCKET}/{k}").content) for k in keys],
+                      workers, f"4h {u}")
+        last = keys[-1][-11:-4]
+        dkeys = [k for k in keys_under(f"data/spot/daily/klines/{u}/4h/") if k[-14:-7] > last]
+        frames += pool([lambda k=k: read_zip(_get(f"{BUCKET}/{k}").content) for k in dkeys],
+                       workers, f"4h daily {u}")
+        df = pd.concat(frames, ignore_index=True)
+        ts = pd.to_numeric(df["open_time"])
+        ts = ts.where(ts < 1e14, ts // 1000)
+        df["time"] = pd.to_datetime(ts, unit="ms")
+        df = df[["time", "open", "high", "low", "close"]].drop_duplicates("time").sort_values("time")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(dest, index=False, compression="gzip")
+        print(f"4h {u}: {len(df)} 根")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=16)
     args = ap.parse_args()
     eoh(args.workers)
     spot_1h(args.workers)
+    spot_4h(args.workers)
     bvol(args.workers)
     print("完成")
 
