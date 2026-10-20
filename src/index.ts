@@ -5,3 +5,5 @@ export {SmoothedStreamingText} from './SmoothedStreamingText.js';
 export {StreamingMarkdown} from './StreamingMarkdown.js';
 export {parseMarkdown,safeHref} from './markdown.js';
 export type {Block,Inline,ListItem,Align} from './markdown.js';
+export type {MathRenderer} from './markdownDom.js';
+export {katexMath,type KatexLike} from './katex.js';

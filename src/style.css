@@ -23,6 +23,10 @@
 .rsm-markdown [data-align=center] { text-align: center; }
 .rsm-markdown [data-align=right] { text-align: right; }
 .rsm-markdown a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.rsm-markdown .rsm-math-display { margin: 0 0 1em; overflow-x: auto; overflow-y: hidden; text-align: center; }
+/* TeX source: shown while a display formula is still arriving, or when no renderer is set. */
+.rsm-markdown .rsm-math-pending, .rsm-markdown .rsm-math:not(:has(> *)) { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; white-space: pre-wrap; opacity: .75; }
+.rsm-markdown .rsm-math-pending { text-align: left; }
 
 /* WAAPI decoration is also disabled/cancelled by the reduced-motion listener. */
 @media (prefers-reduced-motion: reduce) {

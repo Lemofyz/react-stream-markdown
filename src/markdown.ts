@@ -5,12 +5,15 @@
  * strikethrough) and is tolerant of half-received input: when `open` is true the text may still
  * grow, so unclosed `**bold`, `` `code `` and code fences render optimistically instead of
  * flashing raw markers. It never produces HTML strings; renderers build DOM nodes directly.
+ *
+ * Math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`) is opt-in because `$` is common in ordinary prose.
  */
 export type Inline =
   | {type:'text';value:string}
   | {type:'code';value:string}
   | {type:'strong'|'em'|'del';children:Inline[]}
   | {type:'link';href:string|null;children:Inline[]}
+  | {type:'math';value:string;display:boolean}
   | {type:'br'};
 export type Align = 'left'|'center'|'right'|null;
 export interface ListItem {checked:boolean|null;children:Block[]}
@@ -18,6 +21,8 @@ export type Block =
   | {type:'paragraph';children:Inline[]}
   | {type:'heading';level:number;children:Inline[]}
   | {type:'code';lang:string;value:string}
+  /** `pending` while the closing `$$` / `\]` has not arrived yet: render the TeX as text. */
+  | {type:'math';value:string;pending:boolean}
   | {type:'hr'}
   | {type:'blockquote';children:Block[]}
   | {type:'list';ordered:boolean;start:number;tight:boolean;items:ListItem[]}
@@ -44,6 +49,7 @@ const headingLine = /^ {0,3}(#{1,6})(?:[ \t]+(.*))?$/;
 const hrLine = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const quoteLine = /^ {0,3}> ?/;
 const itemLine = /^( {0,3})([-+*]|\d{1,9}[.)])(?:([ \t]+)(.*))?$/;
+const mathOpen = /^ {0,3}(\$\$|\\\[)/;
 const tableSeparator = /^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/;
 
 function listMarker(line: string) {
@@ -57,8 +63,8 @@ function listMarker(line: string) {
   return {ordered,start:ordered ? parseInt(marker,10) : 1,kind:ordered ? marker.at(-1)! : marker,indent,content,empty:!content.trim()};
 }
 /** Lines that end a paragraph. Lists may interrupt only when non-empty (ordered: starting at 1). */
-function interrupts(line: string) {
-  if (fenceOpen.test(line) || headingLine.test(line) || hrLine.test(line) || quoteLine.test(line)) return true;
+function interrupts(line: string,math = false) {
+  if ((math && mathOpen.test(line)) || fenceOpen.test(line) || headingLine.test(line) || hrLine.test(line) || quoteLine.test(line)) return true;
   const item = listMarker(line);
   return !!item && !item.empty && (!item.ordered || item.start === 1);
 }
@@ -77,7 +83,32 @@ function splitRow(line: string): string[] {
   return cells;
 }
 
-export function parseBlocks(src: string,open = false): SourceBlock[] {
+/**
+ * A display-math block starting at line `i`. Returns null when text follows the closing delimiter
+ * on the same line (`$$a$$ is…`): that is inline math inside a paragraph.
+ */
+function scanMath(lines: Line[],i: number,open: boolean) {
+  const first = lines[i].text.trimStart();
+  const closer = first.startsWith('$$') ? '$$' : '\\]';
+  let rest = first.slice(2);
+  const body: string[] = [];
+  for (;;) {
+    const end = rest.indexOf(closer);
+    if (end >= 0) {
+      if (/\S/.test(rest.slice(end + 2))) return null;
+      body.push(rest.slice(0,end));
+      return {value:body.join('\n').trim(),pending:false,next:i + 1};
+    }
+    body.push(rest);
+    if (++i >= lines.length) break;
+    rest = lines[i].text;
+  }
+  // Unclosed. While streaming, hide a closing `$` that is still arriving.
+  if (open && closer === '$$') body[body.length - 1] = body.at(-1)!.replace(/\$$/,'');
+  return {value:body.join('\n').trim(),pending:open,next:i};
+}
+
+export function parseBlocks(src: string,open = false,math = false): SourceBlock[] {
   const lines = splitLines(src);
   const out: SourceBlock[] = [];
   let i = 0;
@@ -91,7 +122,11 @@ export function parseBlocks(src: string,open = false): SourceBlock[] {
     const fence = fenceOpen.exec(line);
     const heading = headingLine.exec(line);
     const item = listMarker(line);
-    if (fence) {
+    const mathBlock = math && mathOpen.test(line) ? scanMath(lines,i,open) : null;
+    if (mathBlock) {
+      block = {type:'math',value:mathBlock.value,pending:mathBlock.pending};
+      i = mathBlock.next;
+    } else if (fence) {
       const indent = fence[1].length;
       const marker = fence[2];
       const close = new RegExp(`^ {0,3}${marker[0] === '`' ? '`' : '~'}{${marker.length},}[ \\t]*$`);
@@ -109,7 +144,7 @@ export function parseBlocks(src: string,open = false): SourceBlock[] {
       block = {type:'code',lang:/^[\w+#.-]*$/.test(fence[3]) ? fence[3] : '',value:body.join('\n')};
     } else if (heading) {
       const text = (heading[2] ?? '').replace(/(?:^|[ \t]+)#+[ \t]*$/,'').trim();
-      block = {type:'heading',level:heading[1].length,children:parseInline(text,open && i === lastContent)};
+      block = {type:'heading',level:heading[1].length,children:parseInline(text,open && i === lastContent,0,math)};
       i++;
     } else if (hrLine.test(line)) {
       block = {type:'hr'};
@@ -117,7 +152,7 @@ export function parseBlocks(src: string,open = false): SourceBlock[] {
     } else if (quoteLine.test(line)) {
       const body: string[] = [];
       while (i < lines.length && quoteLine.test(lines[i].text)) body.push(lines[i++].text.replace(quoteLine,''));
-      block = {type:'blockquote',children:parseBlocks(body.join('\n'),open && i > lastContent).map(b=>b.block)};
+      block = {type:'blockquote',children:parseBlocks(body.join('\n'),open && i > lastContent,math).map(b=>b.block)};
     } else if (item) {
       const items: {checked:boolean|null;lines:string[]}[] = [];
       let tight = true;
@@ -147,7 +182,7 @@ export function parseBlocks(src: string,open = false): SourceBlock[] {
           push();
           current = sibling;
           body = [sibling.content];
-        } else if (!sawBlank && !interrupts(text) && !sibling) {
+        } else if (!sawBlank && !interrupts(text,math) && !sibling) {
           body.push(text.trim()); // Lazy paragraph continuation.
         } else break;
         lastLine = i;
@@ -158,7 +193,7 @@ export function parseBlocks(src: string,open = false): SourceBlock[] {
       const isOpen = open && lastLine >= lastContent;
       block = {type:'list',ordered:item.ordered,start:item.start,tight,items:items.map((entry,index)=>({
         checked:entry.checked,
-        children:parseBlocks(entry.lines.join('\n'),isOpen && index === items.length - 1).map(b=>b.block),
+        children:parseBlocks(entry.lines.join('\n'),isOpen && index === items.length - 1,math).map(b=>b.block),
       }))};
     } else if (line.includes('|') && i + 1 < lines.length && tableSeparator.test(lines[i+1].text)
       && (splitRow(lines[i+1].text).length === splitRow(line).length || (open && i + 1 === lines.length - 1))) {
@@ -168,21 +203,21 @@ export function parseBlocks(src: string,open = false): SourceBlock[] {
         return spec.startsWith(':') && spec.endsWith(':') ? 'center' : spec.endsWith(':') ? 'right' : spec.startsWith(':') ? 'left' : null;
       });
       const rows: Inline[][][] = [];
-      for (i += 2; i < lines.length && !blank(lines[i].text) && lines[i].text.includes('|') && !interrupts(lines[i].text); i++) {
+      for (i += 2; i < lines.length && !blank(lines[i].text) && lines[i].text.includes('|') && !interrupts(lines[i].text,math); i++) {
         const cells = splitRow(lines[i].text);
         const rowOpen = open && i === lastContent;
-        rows.push(head.map((_,c)=>parseInline(cells[c] ?? '',rowOpen && c === cells.length - 1)));
+        rows.push(head.map((_,c)=>parseInline(cells[c] ?? '',rowOpen && c === cells.length - 1,0,math)));
       }
-      block = {type:'table',align,head:head.map(cell=>parseInline(cell,false)),rows};
+      block = {type:'table',align,head:head.map(cell=>parseInline(cell,false,0,math)),rows};
     } else if (open && line.trimStart().startsWith('|') && (i === lastContent || (i + 1 === lastContent && /^[ \t]*\|?[ \t:|-]*$/.test(lines[i+1].text)))) {
       // A table header whose separator has not arrived yet: show the header, not raw pipes.
       const head = splitRow(line);
-      block = {type:'table',align:head.map(()=>null),head:head.map(cell=>parseInline(cell,i === lastContent)),rows:[]};
+      block = {type:'table',align:head.map(()=>null),head:head.map(cell=>parseInline(cell,i === lastContent,0,math)),rows:[]};
       i = lastContent + 1;
     } else {
       const body = [line.trim()];
-      for (i++; i < lines.length && !blank(lines[i].text) && !interrupts(lines[i].text); i++) body.push(lines[i].text.trim());
-      block = {type:'paragraph',children:parseInline(body.join('\n'),open && i > lastContent)};
+      for (i++; i < lines.length && !blank(lines[i].text) && !interrupts(lines[i].text,math); i++) body.push(lines[i].text.trim());
+      block = {type:'paragraph',children:parseInline(body.join('\n'),open && i > lastContent,0,math)};
     }
     out.push({block,start:lines[first].start,end:lines[Math.max(first,i - 1)].end});
   }
@@ -202,8 +237,9 @@ export function safeHref(raw: string): string|null {
 }
 const runLength = (s: string,i: number) => { let j = i; while (s[j] === s[i]) j++; return j - i; };
 /** Find a closing run of `char` that can end a span of `size` markers. Returns the closer's start. */
-function findCloser(s: string,from: number,char: string,size: number): number {
+function findCloser(s: string,from: number,char: string,size: number,math = false): number {
   for (let j = from; j < s.length; j++) {
+    if (math && (s[j] === '$' || s.startsWith('\\(',j) || s.startsWith('\\[',j))) { const found = findMath(s,j); if (found) { j = found.end - 1; continue; } }
     if (s[j] === '\\') { j++; continue; }
     if (s[j] === '`') { const n = runLength(s,j); const end = s.indexOf('`'.repeat(n),j + n); if (end > 0) j = end + n - 1; continue; }
     if (s[j] !== char) continue;
@@ -218,7 +254,28 @@ function findCloser(s: string,from: number,char: string,size: number): number {
   return -1;
 }
 
-export function parseInline(s: string,open = false,depth = 0): Inline[] {
+/**
+ * Inline math starting at `i`. A single `$` follows the Pandoc rule so prices stay text: the
+ * opener is followed by a non-space, the closer preceded by a non-space and not followed by a digit.
+ * Unclosed math stays plain text until its closer arrives.
+ */
+function findMath(s: string,i: number): {value:string;display:boolean;end:number}|null {
+  const pair = s.startsWith('$$',i) ? ['$$','$$'] : s[i] === '$' ? ['$','$'] : s.startsWith('\\(',i) ? ['\\(','\\)'] : s.startsWith('\\[',i) ? ['\\[','\\]'] : null;
+  if (!pair) return null;
+  const [opener,closer] = pair;
+  const from = i + opener.length;
+  if (opener === '$' && (s[from] === undefined || /\s/.test(s[from]))) return null;
+  for (let j = from; j < s.length; j++) {
+    if (s[j] === '\\' && opener.length === 1) { j++; continue; }
+    if (!s.startsWith(closer,j)) continue;
+    if (opener === '$' && (/\s/.test(s[j-1]) || /\d/.test(s[j+1] ?? ''))) continue;
+    const value = s.slice(from,j).trim();
+    return value ? {value,display:opener === '$$' || opener === '\\[',end:j + closer.length} : null;
+  }
+  return null;
+}
+
+export function parseInline(s: string,open = false,depth = 0,math = false): Inline[] {
   // Pathological input (thousands of unclosed markers) stays linear instead of nesting deeply.
   if (depth > 24) return s ? [{type:'text',value:s}] : [];
   const out: Inline[] = [];
@@ -227,6 +284,11 @@ export function parseInline(s: string,open = false,depth = 0): Inline[] {
   let i = 0;
   while (i < s.length) {
     const c = s[i];
+    if (math && (c === '$' || (c === '\\' && (s[i+1] === '(' || s[i+1] === '[')))) {
+      const found = findMath(s,i);
+      if (found) { flush(); out.push({type:'math',value:found.value,display:found.display}); i = found.end; continue; }
+      if (c === '$') { const n = runLength(s,i); text += s.slice(i,i + n); i += n; continue; }
+    }
     if (c === '\\' && s[i+1] === '\n') { flush(); out.push({type:'br'}); i += 2; continue; }
     if (c === '\\' && i + 1 < s.length && punctuation.test(s[i+1])) { text += s[i+1]; i += 2; continue; }
     if (c === '\n') { text = text.replace(/[ \t]+$/,''); flush(); out.push({type:'br'}); i++; continue; }
@@ -267,11 +329,11 @@ export function parseInline(s: string,open = false,depth = 0): Inline[] {
           if (target) {
             const href = safeHref(target[1]);
             // Images are shown as links: auto-loading model-chosen URLs can leak data.
-            const children = image ? [{type:'text',value:label || target[1]} as Inline] : parseInline(label,false,depth + 1);
+            const children = image ? [{type:'text',value:label || target[1]} as Inline] : parseInline(label,false,depth + 1,math);
             flush(); out.push({type:'link',href,children}); i = k; continue;
           }
         } else if (open) {
-          flush(); out.push({type:'link',href:null,children:image ? [{type:'text',value:label}] : parseInline(label,false,depth + 1)}); i = s.length; continue;
+          flush(); out.push({type:'link',href:null,children:image ? [{type:'text',value:label}] : parseInline(label,false,depth + 1,math)}); i = s.length; continue;
         }
       }
       text += c; i++; continue;
@@ -292,12 +354,12 @@ export function parseInline(s: string,open = false,depth = 0): Inline[] {
       const leftFlanking = after !== undefined && /\S/.test(after) && !(c === '_' && i > 0 && word.test(s[i-1]));
       if ((c !== '~' || n === 2) && leftFlanking) {
         const type = c === '~' ? 'del' : size === 2 ? 'strong' : 'em';
-        const close = findCloser(s,i + size,c,size);
+        const close = findCloser(s,i + size,c,size,math);
         if (close >= 0) {
-          flush(); out.push({type,children:parseInline(s.slice(i + size,close),false,depth + 1)}); i = close + size; continue;
+          flush(); out.push({type,children:parseInline(s.slice(i + size,close),false,depth + 1,math)}); i = close + size; continue;
         }
         if (open) {
-          flush(); out.push({type,children:parseInline(s.slice(i + size),true,depth + 1)}); i = s.length; continue;
+          flush(); out.push({type,children:parseInline(s.slice(i + size),true,depth + 1,math)}); i = s.length; continue;
         }
       }
       text += s.slice(i,i + n); i += n; continue;
@@ -308,7 +370,10 @@ export function parseInline(s: string,open = false,depth = 0): Inline[] {
   return out;
 }
 
-/** Parse a whole document. Pass `open: true` while the text is still streaming. */
-export function parseMarkdown(src: string,options: {open?: boolean} = {}): Block[] {
-  return parseBlocks(src,options.open ?? false).map(b=>b.block);
+/**
+ * Parse a whole document. Pass `open: true` while the text is still streaming, and `math: true`
+ * to recognise `$…$`, `$$…$$`, `\(…\)` and `\[…\]`.
+ */
+export function parseMarkdown(src: string,options: {open?: boolean;math?: boolean} = {}): Block[] {
+  return parseBlocks(src,options.open ?? false,options.math ?? false).map(b=>b.block);
 }

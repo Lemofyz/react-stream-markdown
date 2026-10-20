@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-10-20 — Math, and a noncommercial license
+
+- **License changed from MIT to [PolyForm Noncommercial 1.0.0](LICENSE).** Commercial use is no longer permitted. Copies obtained under the earlier MIT terms keep those terms.
+- New opt-in math support: `<StreamingMarkdown math={katexMath(katex)} />` recognises `$…$`, `$$…$$`, `\(…\)` and `\[…\]`. KaTeX is not a dependency; you install it and pass it in. `math={true}` shows TeX source without a renderer.
+- Formulas are typeset once their closing delimiter arrives and are never re-typeset; half-written TeX shows as text. A single `$` follows the Pandoc rule so prices such as `$5 to $10` stay text.
+- `katexMath` keeps KaTeX's `trust` off, so model output cannot create links or HTML classes through TeX.
+- `parseMarkdown` takes `{math: true}`; the block tree has a new `math` block and inline node.
+- Bundle size is 7.8 kB gzipped (was 7.0 kB) for the math parser; KaTeX itself is only loaded if you import it.
+
 ## 0.3.1 — 2026-10-02 — Renamed to react-stream-markdown
 
 - The package, repository and demo are now `react-stream-markdown` (was `stream-readable`, which was easy to confuse with Node's `readable-stream`). The package had not been published under the old name.
