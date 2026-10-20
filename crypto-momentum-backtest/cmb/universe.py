@@ -21,6 +21,23 @@ LEVERAGED_UNDERLYING = {
 }
 
 
+# 2026 年币安上线的“传统金融”永续合约(股票、ETF、大宗商品、外汇、未上市公司等),不是加密资产。
+# 名单按合约名人工整理,只用于永续合约做空实验。
+TRADFI_PERPS = set("""
+AAOI AAPL ACN ADBE AGPU ALAB AMAT AMC AMD AMZN ANET ANTHROPIC APLD APP ARM ASML ASTS AVGO AXTI
+BABA BE BILL BITO BMNR BNC BRKB BWET BYD CAT CBRS CIEN CL COHR COIN COPPER COST CRCL CRDO CRM
+CRML CRWD CRWV CSCO CSOPSAMSUNG2L CSOPSKHYNIX2L CVNA CXMT CYPH DDOG DELL DIS DJT DKNG DRAM EBAY
+EWJ EWT EWY EWZ FLEX FLNC FWDI GDX GEV GIGADEV GLW GME GOOGL GPRO GS GTLB HANMI HD HIMS HK0625
+HK0700 HK0992 HK1810 HOOD HPE HUT HYUNDAI IBM INTC INTW IONQ IREN IWM JPM KLAC KO KODEX200 KORU
+KUAISHOU LGELECTRONICS LITE LLY LRCX MARA MDB MEITUAN META MINIMAX MP MRK MRNA MRVL MSFT MSTR MU
+MUU NATGAS NAVER NBIS NET NFLX NKE NOK NOW NVDA NVDL NVO OKLO ONDS OPENAI ORCL OURA PANW PATH PDD
+PLTR POPMART PYPL QCOM QQQ RDDT RIVN RKLB RUM SAMSUNG SAMSUNGEM SHOP SKDD SKHY SKHYNIX SKUU SLX
+SMCI SMH SNDK SNOW SOFI SONY SOXL SOXS SPCX SPY SQQQ STRC TBT TEAM TEM TENCENT TER TMF TQQQ TSLA
+TSLL TSM TTWO TWST TXN TZA UBER UNH UNITREE URNM USAR USDBRL UVXY V VRT VST WDC WMT XAG XAU XBI
+XLE XOM XPD XPT ZHIPU ZHONGJI ZM ZS
+""".split())
+
+
 def is_leveraged(base: str) -> bool:
     if base.endswith("BULL") or base.endswith("BEAR"):
         return True
@@ -52,13 +69,13 @@ def looks_tokenized_stock(symbol: str, df: pd.DataFrame) -> bool:
     return base.endswith("B") and len(base) > 2 and df.index.min() >= pd.Timestamp("2026-06-01")
 
 
-def load_panel(raw_dir: str | Path) -> dict[str, pd.DataFrame]:
-    """读取全部 csv,返回 {字段: 日期×币种 的宽表}。"""
+def load_panel(raw_dir: str | Path, exclude: set[str] = frozenset()) -> dict[str, pd.DataFrame]:
+    """读取全部 csv,返回 {字段: 日期×币种 的宽表}。exclude: 额外剔除的基础资产名。"""
     raw_dir = Path(raw_dir)
     frames = {}
     for f in sorted(raw_dir.glob("*.csv.gz")):
         sym = f.name.split(".")[0]
-        if is_excluded_symbol(sym):
+        if is_excluded_symbol(sym) or sym[:-4] in exclude:
             continue
         df = pd.read_csv(f, parse_dates=["date"]).set_index("date")
         df = df[~df.index.duplicated()].sort_index()

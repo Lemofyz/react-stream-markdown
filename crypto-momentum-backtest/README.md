@@ -55,6 +55,9 @@ cmb/engine.py        参数 (Params)、向量化信号 (SignalBuilder)、逐日�
 cmb/metrics.py       收益、年化、回撤及持续时间、夏普、胜率、R 倍数、止损比例、连亏、蒙特卡洛、分年份
 cmb/charts.py        资金曲线、单笔交易 K 线图
 run_backtest.py      所有实验 + 报告
+download_futures.py  永续合约日线 / 4h / 资金费率下载(做空实验)
+cmb/short_engine.py  做空实验:参数、暴涨事件、逐日(+4h)撮合
+run_short.py         做空实验 + 报告
 ```
 
 ## 规则与参数
@@ -93,6 +96,23 @@ run_backtest.py      所有实验 + 报告
 - 剔除:稳定币、法币(EUR/GBP/…)、PAXG/XAUT、WBTC/WBETH、杠杆代币;价格长期贴 1 美元的也剔除;
   2026 年上线的代币化美股(AAPLB 等)剔除。
 - 夏普 = 日收益均值 / 标准差 × √365,无风险利率按 0。
+
+## 独立实验:抛物线做空(USDT 永续)
+
+只做空:3–4 天暴涨 ≥ 100/200/300% 的币,不追第 1、2 天,出现走弱信号(日线收盘破前低 / 4h 跌破当天首根 K 线低点)后做空,
+止损在当天最高点或 1×ATR,均线附近平一半,最长持有 20 天;计入 0.05% / 0.1% / 0.6% 三档手续费、0.2% 滑点和
+**币安真实历史资金费率**。规则和选参方式在看结果之前写死在 `cmb/short_engine.py` 文件头,
+只用 2020–2023 选变体,2024 至今只做检验。报告:[`results_short/REPORT_SHORT.md`](results_short/REPORT_SHORT.md)
+
+```bash
+python download_futures.py daily     # 全部 USDT 永续日线(含已下架合约,约 15 分钟)
+python download_futures.py detail    # 只为出现暴涨的合约下载 4h K 线 + 真实资金费率
+python run_short.py                  # 约 1 分钟
+```
+
+- 只使用永续合约数据:当时没有永续合约的币,散户本来也做空不了。
+- 剔除了 2026 年币安上线的股票 / ETF / 大宗商品 / 外汇等“传统金融”永续(名单见 `cmb/universe.py` 的 `TRADFI_PERPS`)。
+- 持仓期间用 4h K 线检查止损;止损成交价 = max(止损价, 下一根 K 线开盘价),同一根 K 线内按对空头最不利的顺序处理。
 
 ## 局限
 

@@ -16,6 +16,10 @@ SURFACE, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#6250d6"]
 UP, DOWN = "#1baf7a", "#e34948"
 plt.rcParams["axes.unicode_minus"] = False
+# 合约名里可能有中文(如“龙虾USDT”):有中文字体就作为后备字体
+_fams = list(plt.rcParams["font.family"])
+if "WenQuanYi Zen Hei" not in _fams:
+    plt.rcParams["font.family"] = _fams + ["WenQuanYi Zen Hei"]
 
 
 def style_ax(ax):
@@ -145,4 +149,64 @@ def plot_mc_hist(samples: np.ndarray, hist: float, median: float, p95: float, pa
     ax.set_title(title, color=INK, fontsize=10, loc="left")
     fig.tight_layout()
     fig.savefig(path, dpi=120, facecolor=SURFACE)
+    plt.close(fig)
+
+
+def plot_short_trade(panel: dict[str, pd.DataFrame], tr: pd.Series, path: Path, ma: int,
+                     title: str):
+    """做空交易 K 线图:暴涨区间(灰底)、检测日、做空点、止损(含移到开仓价)、平一半、平仓。"""
+    sym = tr.symbol
+    lo = pd.Timestamp(tr.pump_start) - pd.Timedelta(days=12)
+    hi = pd.Timestamp(tr.exit_date) + pd.Timedelta(days=6)
+    o, h, l, c, v = (panel[k][sym] for k in ("open", "high", "low", "close", "volume"))
+    df = pd.DataFrame({"o": o, "h": h, "l": l, "c": c, "v": v}).loc[lo:hi].dropna()
+    mav = c.rolling(ma).mean().loc[df.index]
+
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(11, 5.6), sharex=True,
+                                 gridspec_kw={"height_ratios": [3.2, 1]})
+    fig.patch.set_facecolor(SURFACE)
+    for ax in (a1, a2):
+        style_ax(ax)
+    x = mdates_num(df.index)
+    w = 0.7
+    for xi, (_, r) in zip(x, df.iterrows()):
+        col = UP if r.c >= r.o else DOWN
+        a1.vlines(xi, r.l, r.h, color=col, lw=0.8)
+        a1.add_patch(Rectangle((xi - w / 2, min(r.o, r.c)), w, max(abs(r.c - r.o), 1e-12),
+                               color=col, lw=0))
+        a2.bar(xi, r.v, width=w, color=col, alpha=0.6)
+    a1.plot(x, mav.values, color=SERIES[0], lw=1.2, label=f"MA{ma}")
+    p0 = mdates_num([pd.Timestamp(tr.pump_start)])[0] - 0.5
+    p1 = mdates_num([pd.Timestamp(tr.detect_date)])[0] + 0.5
+    for ax in (a1, a2):
+        ax.axvspan(p0, p1, color="#bdbcb6", alpha=0.35, lw=0)
+    dx = mdates_num([pd.Timestamp(tr.detect_date)])[0]
+    a1.annotate(f"pump +{tr.pump_gain:.0%} detected", (dx, h.loc[tr.detect_date]),
+                xytext=(0, 14), textcoords="offset points", ha="center", fontsize=8,
+                color=INK, arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.8))
+    ex = mdates_num([pd.Timestamp(tr.entry_date)])[0]
+    xx = max(mdates_num([pd.Timestamp(tr.exit_date)])[0], ex + 0.45)  # 当天止损也画出止损线
+    a1.scatter([ex], [tr.entry_price], marker="v", s=70, color=SERIES[3], zorder=5,
+               edgecolor=SURFACE, label="short")
+    if tr.partial_taken and not pd.isna(tr.partial_date):
+        px = mdates_num([pd.Timestamp(tr.partial_date)])[0]
+        a1.hlines(tr.stop, ex, px, color=DOWN, lw=1.4, label="stop")
+        a1.hlines(tr.entry_price, px, xx, color=DOWN, lw=1.4, ls=":")
+        a1.scatter([px], [tr.partial_price], marker="^", s=60, color=SERIES[1], zorder=5,
+                   edgecolor=SURFACE, label="cover 1/2")
+    else:
+        a1.hlines(tr.stop, ex, xx, color=DOWN, lw=1.4, label="stop")
+    a1.scatter([mdates_num([pd.Timestamp(tr.exit_date)])[0]], [tr.exit_price], marker="X", s=70,
+               color=SERIES[1], zorder=5, edgecolor=SURFACE, label=f"exit ({tr.exit_reason})")
+    a1.set_yscale("log")
+    a1.set_title(title, color=INK, fontsize=10, loc="left", pad=20)
+    a1.legend(frameon=False, fontsize=7, labelcolor=INK2, loc="lower left",
+              bbox_to_anchor=(0, 1.0), ncol=6, borderaxespad=0.2)
+    a2.set_ylabel("volume", color=INK2, fontsize=8)
+    ticks = x[:: max(1, len(x) // 10)]
+    a2.set_xticks(ticks)
+    a2.set_xticklabels([pd.Timestamp.fromordinal(int(t)).strftime("%Y-%m-%d") for t in ticks],
+                       fontsize=7)
+    fig.tight_layout()
+    fig.savefig(path, dpi=110, facecolor=SURFACE)
     plt.close(fig)
