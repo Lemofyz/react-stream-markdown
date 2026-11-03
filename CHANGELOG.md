@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 — 2026-11-03 — Back to MIT
+
+- **License changed from PolyForm Noncommercial 1.0.0 back to [MIT](LICENSE).** Commercial use is allowed again. This applies to 0.4.1 and later; no code changes.
+
 ## 0.4.0 — 2026-10-20 — Math, and a noncommercial license
 
 - **License changed from MIT to [PolyForm Noncommercial 1.0.0](LICENSE).** Commercial use is no longer permitted. Copies obtained under the earlier MIT terms keep those terms.

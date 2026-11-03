@@ -210,4 +210,4 @@ npm run build      # 静态演示输出到 dist/
 
 ## 许可证
 
-[PolyForm Noncommercial 1.0.0](LICENSE)。个人、研究、教育等非商业用途可免费使用，**禁止商业用途**。如需商业授权，请通过 [GitHub](https://github.com/Lemofyz) 联系作者。欢迎提 Issue 和 PR。
+[MIT](LICENSE)。可以免费使用、修改和分发，包括用在商业项目里。欢迎提 Issue 和 PR。

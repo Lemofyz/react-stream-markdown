@@ -210,4 +210,4 @@ Not supported: raw HTML, footnotes, and syntax highlighting (style `pre code.lan
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE). Free for personal, research, educational and other noncommercial use. **Commercial use is not permitted.** For a commercial license, contact the author via [GitHub](https://github.com/Lemofyz). Issues and pull requests are welcome.
+[MIT](LICENSE). Free to use, modify and distribute, including in commercial projects. Issues and pull requests are welcome.
